@@ -16,19 +16,17 @@ body() ->
         [
          #panel{class=mainPanel, body=
                 [
-                 #label { text="username" },
-                 #textbox { id=username, postback=login, next=password },
+                 #label {text="username"},
+                 #textbox {id=username, postback=login, next=password},
                  #p{},
                  #label { text="password" },
-                 #password { id=password, postback=login, next=submit },
+                 #password {id=password, postback=login, next=submit},
                  #p{},
                  #button {id=submit, text="Login", postback=login}
-                 %%                           #flash { id=flash },
-                 %%                           #panel { id=test }
                 ]}
         ],
-    wf:wire(submit, username, #validate { validators=[#is_required { text="Required." }]}),
-    wf:wire(submit, password, #validate { validators=[#is_required { text="Required." }]}),
+    wf:wire(submit, username, #validate {validators=[#is_required {text="Required."}]}),
+    wf:wire(submit, password, #validate {validators=[#is_required {text="Required."}]}),
     wf:render(Body).
 	
 authenticate(Username, Password) ->

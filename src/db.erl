@@ -41,7 +41,7 @@ create_tables(DiskNodes) ->
     mnesia:create_table(domain, [{attributes, record_info (fields, domain)},
                                  {index, [id, user_id]}, {disc_copies, DiskNodes}]),
     mnesia:create_table(alias, [{attributes, record_info (fields, alias)},
-                                  {index, [id, domain_id]}, {disc_copies, DiskNodes}]).
+                                {index, [id, domain_id]}, {disc_copies, DiskNodes}]).
 
 do(Q) ->
     {atomic, Val} = mnesia:transaction(fun() -> qlc:e(Q) end),
@@ -50,7 +50,17 @@ do(Q) ->
 %% write(Row) ->
 %%     mnesia:transaction(fun() -> mnesia:write(Row) end).
 
-transact_create(T) ->
+create_entry(Type, Key, RowGen) ->
+    T = fun() ->
+                case mnesia:read(Type, Key) of
+                    [] ->
+                        Id = mnesia:dirty_update_counter(counter, Type, ?counter_incr),
+                        mnesia:write(RowGen(Id)),
+                        Id;
+                    [_] ->
+                        exists
+                end
+        end,
     case mnesia:transaction(T) of
         {atomic, exists} ->
             {error, exists};
@@ -62,9 +72,10 @@ get_table(Name) when is_atom(Name) ->
     do(qlc:q([X || X <- mnesia:table(Name)])).
 
 get_user_by_name(Name) ->
-    do(qlc:q([X || X <- mnesia:table(user), X#user.name =:= Name])).
+    LowerName = string:to_lower(Name),
+    do(qlc:q([X || X <- mnesia:table(user), X#user.name =:= LowerName])).
 
-is_username_available(Name) ->    
+is_username_available(Name) -> 
     case length(get_user_by_name(Name)) of
         1 ->
             false;
@@ -72,29 +83,40 @@ is_username_available(Name) ->
             true
     end.
 
+%% create_user_(Name, Password, Email) ->
+%%     LowerName = string:to_lower(Name),
+%%     T = fun() ->
+%%                 case mnesia:read(user, LowerName) of
+%%                     [] ->
+%%                         Id = mnesia:dirty_update_counter(counter, user, ?counter_incr),
+%%                         <<Digest:?sha_len>> = crypto:sha(Password),
+%%                         Row = #user{id=Id, name=LowerName, email=Email, pass=Digest, 
+%%                                     created=erlang:localtime(), 
+%%                                     last_access=erlang:localtime()},
+%%                         mnesia:write(Row),
+%%                         Id;
+%%                     [_] ->
+%%                         exists
+%%                 end
+%%         end,
+%%     transact_create(T).
+
 create_user(Name, Password, Email) ->
-    LowerName = string:to_lower(Name),
-    T = fun() ->
-                case mnesia:read(user, LowerName) of
-                    [] ->
-                        Id = mnesia:dirty_update_counter(counter, user, ?counter_incr),
-                        <<Digest:?sha_len>> = crypto:sha(Password),
-                        Row = #user{id=Id, name=LowerName, email=Email, pass=Digest, 
-                                    created=erlang:localtime(), 
-                                    last_access=erlang:localtime()},
-                        mnesia:write(Row),
-                        Id;
-                    [_] ->
-                        exists
-                end
-        end,
-    transact_create(T).
+    Key = string:to_lower(Name),
+    RowGen = fun(Id) ->
+                     <<Digest:?sha_len>> = crypto:sha(Password),
+                     #user{id=Id, name=Key, email=Email, pass=Digest, 
+                           created=erlang:localtime(), 
+                           last_access=erlang:localtime()}
+             end,
+    create_entry(user, Key, RowGen).
 
 
 is_auth_user(Name, Password) ->
+    LowerName = string:to_lowver(Name),
     <<Digest:?sha_len>> = crypto:sha(Password),
     case length(do(qlc:q([X#user.name || X <- mnesia:table(user), 
-                                         X#user.name =:= Name, 
+                                         X#user.name =:= LowerName, 
                                          X#user.pass =:= Digest]))) of
         1 ->
             true;
@@ -112,38 +134,56 @@ is_domain_available(Name) ->
             true
     end.
 
+
 create_domain(Name, User_id) ->
-    T = fun() ->
-                case mnesia:read(domain, Name) of
-                    [] ->
-                        Id = mnesia:dirty_update_counter(counter, domain, ?counter_incr),
-                        Row = #domain{id=Id, name=string:to_lower(Name), user_id=User_id, 
-                                      created=erlang:localtime()},
-                        mnesia:write(Row),
-                        Id;
-                    [_] ->
-                        exists
-                end
-        end,
-    transact_create(T).
+    Key = string:to_lower(Name),
+    RowGen = fun(Id) ->
+                     #domain{name=Key, id=Id, user_id=User_id, created=erlang:localtime()}
+             end,
+    create_entry(domain, Key, RowGen).
+
+%% create_domain_(Name, User_id) ->
+%%     LowerName = string:to_lower(Name),
+%%     T = fun() ->
+%%                 case mnesia:read(domain, LowerName) of
+%%                     [] ->
+%%                         Id = mnesia:dirty_update_counter(counter, domain, ?counter_incr),
+%%                         Row = #domain{id=Id, name=LowerName, 
+%%                                       user_id=User_id, created=erlang:localtime()},
+%%                         mnesia:write(Row),
+%%                         Id;
+%%                     [_] ->
+%%                         exists
+%%                 end
+%%         end,
+%%     transact_create(T).
 
 get_domains_by_user_id(User_id) ->
     do(qlc:q([X || X <- mnesia:table(domain), X#domain.user_id =:= User_id])).
 
 create_alias(From, To, Domain_id, Note) ->
-    T = fun() ->
-                case mnesia:read(alias, From) of
-                    [] ->
-                        Id = mnesia:dirty_update_counter(counter, alias, ?counter_incr),
-                        Row = #alias{from=From, id=Id, to=To, domain_id=Domain_id, 
-                                     note=Note, created=erlang:localtime()},
-                        mnesia:write(Row),
-                        Id;
-                    [_] ->
-                        exists
-                end
-        end,
-    transact_create(T).
+    Key = string:to_lower(From),
+    RowGen = fun(Id) ->
+                     #alias{from=Key, id=Id, to=To, domain_id=Domain_id, 
+                            note=Note, created=erlang:localtime()}
+             end,
+    create_entry(alias, Key, RowGen).
+
+%% create_alias_(From, To, Domain_id, Note) ->
+%%     LowerFrom = string:to_lower(From),
+%%     T = fun() ->
+%%                 case mnesia:read(alias, LowerFrom) of
+%%                     [] ->
+%%                         Id = mnesia:dirty_update_counter(counter, alias, ?counter_incr),
+%%                         Row = #alias{from=LowerFrom, id=Id, to=To, domain_id=Domain_id, 
+%%                                      note=Note, created=erlang:localtime()},
+%%                         mnesia:write(Row),
+%%                         Id;
+%%                     [_] ->
+%%                         exists
+%%                 end
+%%         end,
+%%     transact_create(T).
 
 get_aliases_by_domain_id(Domain_id) ->
     do(qlc:q([X || X <- mnesia:table(alias), X#alias.domain_id =:= Domain_id])).
@@ -156,11 +196,11 @@ crud_test_() ->
            [
             ?_assert(true =:= is_username_available("jay")),
             ?_assert({id, 1} =:= create_user("jay", "pass", "jay@foo.com" )),
-            ?_assert(false =:= is_username_available("jay")),
+            ?_assert(false =:= is_username_available("Jay")),
             ?_assert({error, exists} =:= create_user("jay", "pass", "jay@foo.com" )),
             ?_assert(true =:= is_domain_available("jay.example.com")),
             ?_assert([] =:= get_domains_by_user_id(1)),
-            ?_assert({id, 1} =:= create_domain("jay.example.com", 1)),
+            ?_assert({id, 1} =:= create_domain("Jay.example.com", 1)),
             ?_assert(false =:= is_domain_available("jay.example.com")),
             ?_assert({error, exists} =:= create_domain("jay.example.com", 1)),
             ?_assert(1 =:= length(get_domains_by_user_id(1))),
