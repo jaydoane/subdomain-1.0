@@ -17,18 +17,28 @@ title() ->
     {_User, Domain} = wf:user(),
     Domain#domain.name.
 
-get_map() -> #rowdata {row=from_row@id, from=from_cell@text, to=to_cell@text, note=note_cell@text, postback=delete_button@postback}.
+get_map() -> 
+    #rowdata {row=from_row@id, from=from_cell@text, to=to_cell@text, 
+              note=note_cell@text, postback=delete_button@postback}.
+
+split_address(Address) ->
+    string:tokens(Address, "@").
+
+domain_part(Address) ->
+    [_Mailbox, Domain] = split_address(Address),
+    Domain.
 
 mailbox_part(Address) ->
-    hd(string:tokens(Address, "@")).
+    [Mailbox, _Domain] = split_address(Address),
+    Mailbox.
 
 get_data(Domain_id) ->
-    Mailmaps = db:get_mailmaps_by_domain_id(Domain_id),
-    [#rowdata {row = mailbox_part(M#mailmap.from),
-               from = M#mailmap.from,
-               to = M#mailmap.to,
-               note = M#mailmap.note,
-               postback = {data, M#mailmap.from}} || M <- Mailmaps].
+    Aliases = db:get_aliases_by_domain_id(Domain_id),
+    [#rowdata {row = integer_to_list(A#alias.id),
+               from = mailbox_part(A#alias.from),
+               to = A#alias.to,
+               note = A#alias.note,
+               postback = {data, integer_to_list(A#alias.id)}} || A <- Aliases].
 
 body() ->
     {User, Domain} = wf:user(),
@@ -36,7 +46,7 @@ body() ->
     Data = get_data(Domain#domain.id),
     %%io:format("Data: ~p~n", [Data]),
     Body = [#panel {class=mainPanel, body=
-                    [#table {id=maptable, class=mailmap, rows=
+                    [#table {id=maptable, class=alias, rows=
                              [#tablerow {cells=
                                          [#tableheader {text="From"},
                                           #tableheader {text="To"},
@@ -48,7 +58,9 @@ body() ->
                                                 [#tablecell {id=from_cell},
                                                  #tablecell {id=to_cell},
                                                  #tablecell {id=note_cell},
-                                                 #tablecell {body=#button {id=delete_button, text="delete"}}
+                                                 #tablecell {body=#button 
+                                                             {id=delete_button, 
+                                                              text="delete"}}
                                                 ]}}
                              ]},
                      #p{},
@@ -74,7 +86,7 @@ event(create) ->
     From = FromMailbox ++ "@" ++ Domain#domain.name,
     [To] = wf:q(to),
     [Note] = wf:q(note),
-    db:create_mailmap(From, To, Domain#domain.id, Note),
+    db:create_alias(From, To, Domain#domain.id, Note),
     wf:insert_bottom(maptable, #tablerow {cells=
                                           [#tablecell {text=From},
                                            #tablecell {text=To},
@@ -85,7 +97,7 @@ event(create) ->
     ok;
 
 event({data, Data}) ->
-    Id = mailbox_part(Data),
+    Id = Data,
     %%Message = "Row: " ++ wf:to_list(Id),
     %%wf:wire(#alert { text=Message }),
     wf:update(Id, #tablerow {}),

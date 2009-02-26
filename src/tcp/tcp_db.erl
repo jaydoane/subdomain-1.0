@@ -9,7 +9,7 @@
 lookup(Key) ->
     case string:str(Key, "@") of
         0 -> lookup_domain(Key);
-        _ -> lookup_mailmap(Key)
+        _ -> lookup_alias(Key)
     end.
 
 lookup_domain(Name) ->
@@ -17,10 +17,10 @@ lookup_domain(Name) ->
                                                X#domain.name =:= Name])) end,
     mnesia:transaction(F).
 
-lookup_mailmap(From) ->
-    F = fun() -> qlc:e(qlc:q([X#mailmap.to || X <- mnesia:table(mailmap), 
-                                              X#mailmap.from =:= From,
-                                              X#mailmap.is_active =:= true])) end,
+lookup_alias(From) ->
+    F = fun() -> qlc:e(qlc:q([X#alias.to || X <- mnesia:table(alias), 
+                                              X#alias.from =:= From,
+                                              X#alias.is_active =:= true])) end,
     mnesia:transaction(F).
 
 %% create_tables() ->

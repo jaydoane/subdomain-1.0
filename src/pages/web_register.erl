@@ -43,14 +43,14 @@ body() ->
     wf:render(Body).
 	
 register(Username, Password, Email) ->
-    Id = db:create_user(Username, Password, Email),
-    db:create_domain(Username ++ "." ++ ?BASE_DOMAIN, Id),
-    {valid, Id}.
+    {id, Id} = db:create_user(Username, Password, Email),
+    db:create_domain(Username ++ "." ++ ?BASE_DOMAIN, Id), %fixme
+    {id, Id}.
 
 event(register) ->
-    io:format("register ~n"),
+    %%io:format("register ~n"),
     case register(hd(wf:q(username)), hd(wf:q(password)), hd(wf:q(email))) of
-        {valid, _Id} ->
+        {id, _Id} ->
             wf:user(hd(wf:q(username))),
             wf:redirect("login");
         _ ->

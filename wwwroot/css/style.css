@@ -2,21 +2,21 @@ body, .mainPanel, .loginPanel { padding: 25px; }
 body { background-color: #CCC; }
 .mainPanel { border: solid 5px #888; }
 
-table.mailmap {
+table.alias {
 	border-width: 0px 0px 0px 0px;
 	border-spacing: 4px;
 	border-style: none none none none;
 	border-color: gray gray gray gray;
 	border-collapse: separate;
 }
-table.mailmap th {
+table.alias th {
 	border-width: 0px 0px 0px 0px;
 	padding: 1px 1px 1px 1px;
 	border-style: solid solid solid solid;
 	border-color: black black black black;
 	-moz-border-radius: 0px 0px 0px 0px;
 }
-table.mailmap td {
+table.alias td {
 	border-width: thin thin thin thin;
 	padding: 2px 2px 2px 2px;
 	border-style: solid solid solid solid;
