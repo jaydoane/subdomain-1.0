@@ -4,21 +4,21 @@ body { background-color: #CCC; }
 
 table.alias {
 	border-width: 0px 0px 0px 0px;
-	border-spacing: 4px;
+	border-spacing: 0px;
 	border-style: none none none none;
-	border-color: gray gray gray gray;
+	border-color: black black black black;
 	border-collapse: separate;
 }
 table.alias th {
 	border-width: 0px 0px 0px 0px;
-	padding: 1px 1px 1px 1px;
+	padding: 3px 3px 3px 3px;
 	border-style: solid solid solid solid;
 	border-color: black black black black;
 	-moz-border-radius: 0px 0px 0px 0px;
 }
 table.alias td {
-	border-width: thin thin thin thin;
-	padding: 2px 2px 2px 2px;
+	border-width: 1px 1px 1px 1px;
+	padding: 3px 3px 3px 3px;
 	border-style: solid solid solid solid;
 	border-color: black black black black;
 	-moz-border-radius: 1px 1px 1px 1px;

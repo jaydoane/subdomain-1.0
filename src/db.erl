@@ -14,6 +14,8 @@
          is_domain_available/1,
          get_domains_by_user_id/1,
          get_aliases_by_domain_id/1,
+         get_alias_by_id/1,
+         delete_alias_by_id/1,
          is_auth_user/2
         ]).
 
@@ -113,7 +115,7 @@ create_user(Name, Password, Email) ->
 
 
 is_auth_user(Name, Password) ->
-    LowerName = string:to_lowver(Name),
+    LowerName = string:to_lower(Name),
     <<Digest:?sha_len>> = crypto:sha(Password),
     case length(do(qlc:q([X#user.name || X <- mnesia:table(user), 
                                          X#user.name =:= LowerName, 
@@ -169,6 +171,18 @@ create_alias(From, To, Domain_id, Note) ->
              end,
     create_entry(alias, Key, RowGen).
 
+get_alias_by_id(Id) ->
+    do(qlc:q([X || X <- mnesia:table(alias), X#alias.id =:= Id])).
+
+delete_alias_by_id(Id) ->
+    case get_alias_by_id(Id) of
+        [] ->
+            {error, no_alias_with_id};
+        [Alias] ->
+            Oid = {alias, Alias#alias.from},
+            mnesia:transaction(fun() -> mnesia:delete(Oid) end)
+    end.
+
 %% create_alias_(From, To, Domain_id, Note) ->
 %%     LowerFrom = string:to_lower(From),
 %%     T = fun() ->
@@ -206,7 +220,7 @@ crud_test_() ->
             ?_assert(1 =:= length(get_domains_by_user_id(1))),
             ?_assert({id, 1} =:= create_alias("spammer.com@jay.example.com", "jay@foo.com", 
                                               1, "mylogin:mypass")),
-            ?_assert({error, exists} =:= create_alias("spammer.com@jay.example.com", 
+            ?_assert({error, exists} =:= create_alias("SPAMMER.COM@jay.example.com", 
                                                       "jay@foo.com", 1, "mylogin:mypass"))
            ]
    end}.

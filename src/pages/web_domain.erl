@@ -24,9 +24,9 @@ get_map() ->
 split_address(Address) ->
     string:tokens(Address, "@").
 
-domain_part(Address) ->
-    [_Mailbox, Domain] = split_address(Address),
-    Domain.
+%% domain_part(Address) ->
+%%     [_Mailbox, Domain] = split_address(Address),
+%%     Domain.
 
 mailbox_part(Address) ->
     [Mailbox, _Domain] = split_address(Address),
@@ -38,7 +38,7 @@ get_data(Domain_id) ->
                from = mailbox_part(A#alias.from),
                to = A#alias.to,
                note = A#alias.note,
-               postback = {data, integer_to_list(A#alias.id)}} || A <- Aliases].
+               postback = {delete, integer_to_list(A#alias.id)}} || A <- Aliases].
 
 body() ->
     {User, Domain} = wf:user(),
@@ -46,7 +46,7 @@ body() ->
     Data = get_data(Domain#domain.id),
     %%io:format("Data: ~p~n", [Data]),
     Body = [#panel {class=mainPanel, body=
-                    [#table {id=maptable, class=alias, rows=
+                    [#table {id=alias_table, class=alias, rows=
                              [#tablerow {cells=
                                          [#tableheader {text="From"},
                                           #tableheader {text="To"},
@@ -76,8 +76,8 @@ body() ->
                      #button{id=submit, text="Create", postback=create}
                     ]}
            ],
-    wf:wire(submit, from_mailbox, #validate { validators=[#is_required { text="Required" }]}),
-    wf:wire(submit, to, #validate { validators=[#is_required { text="Required" }]}),
+    wf:wire(submit, from_mailbox, #validate {validators=[#is_required {text="Required"}]}),
+    wf:wire(submit, to, #validate {validators=[#is_required {text="Required"}]}),
     wf:render(Body).
 	
 event(create) ->
@@ -86,21 +86,39 @@ event(create) ->
     From = FromMailbox ++ "@" ++ Domain#domain.name,
     [To] = wf:q(to),
     [Note] = wf:q(note),
-    db:create_alias(From, To, Domain#domain.id, Note),
-    wf:insert_bottom(maptable, #tablerow {cells=
-                                          [#tablecell {text=From},
-                                           #tablecell {text=To},
-                                           #tablecell {text=Note},
-                                           #tablecell {body=#button {id=delete_button, text="delete"}}
-                                          ]}
+    {id, Id} = db:create_alias(From, To, Domain#domain.id, Note),
+    IdStr = integer_to_list(Id),
+    %%io:format("new alias id ~p~n", [Id]),
+    wf:insert_bottom(alias_table, 
+                     #tablerow {id=IdStr, cells=
+                                [#tablecell {text=mailbox_part(From)},
+                                 #tablecell {text=To},
+                                 #tablecell {text=Note},
+                                 #tablecell {body=#button {postback={delete, IdStr}, 
+                                                           text="delete"}}
+                                ]}
                     ),
     ok;
 
-event({data, Data}) ->
-    Id = Data,
-    %%Message = "Row: " ++ wf:to_list(Id),
-    %%wf:wire(#alert { text=Message }),
-    wf:update(Id, #tablerow {}),
-    ok;
+event({delete, IdStr}) ->
+    %%     Message = "Row: " ++ wf:to_list(Id),
+    %%     wf:wire(#alert {text=Message}),
+    {Id, _} = string:to_integer(IdStr),
+    {_User, Domain} = wf:user(),
+    case db:get_alias_by_id(Id) of
+        [] ->
+            io:format("no_alias_with_id ~p~n", [Id]),
+            {error, no_alias_with_id};
+        [Alias] ->
+            case Alias#alias.domain_id =:= Domain#domain.id of
+                true ->
+                    {atomic, ok} = db:delete_alias_by_id(Id),
+                    wf:update(IdStr, #tablerow {id=""}),
+                    ok;
+                false ->
+                    io:format("domain_mismatch ~p ~p~n", [Id, Domain#domain.id]),
+                    {error, domain_mismatch}
+            end
+    end;
 
 event(_) -> ok.
