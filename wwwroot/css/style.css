@@ -1,6 +1,7 @@
-body, .mainPanel, .loginPanel { padding: 25px; }
-body { background-color: #CCC; }
-.mainPanel { border: solid 5px #888; }
+body, .mainPanel, .loginPanel { padding: 25px; font-size: small; font-family : Verdana, sans-serif;}
+body { background-color: #ccc; }
+.mainPanel { border: solid 5px #aaa; }
+.createPanel { border: solid 2px #aaa; padding: 10px}
 
 table.alias {
 	border-width: 0px 0px 0px 0px;
@@ -11,14 +12,14 @@ table.alias {
 }
 table.alias th {
 	border-width: 0px 0px 0px 0px;
-	padding: 3px 3px 3px 3px;
+	padding: 3px 3px 3px 10px;
 	border-style: solid solid solid solid;
 	border-color: black black black black;
 	-moz-border-radius: 0px 0px 0px 0px;
 }
 table.alias td {
-	border-width: 1px 1px 1px 1px;
-	padding: 3px 3px 3px 3px;
+	border-width: 0px 0px 0px 0px;
+	padding: 3px 3px 3px 10px;
 	border-style: solid solid solid solid;
 	border-color: black black black black;
 	-moz-border-radius: 1px 1px 1px 1px;

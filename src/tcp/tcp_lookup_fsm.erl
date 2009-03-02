@@ -16,17 +16,14 @@
         ]).
 
 -record(state, {
-          socket,    % client socket
-          addr       % client address
-         }).
+            socket,    % client socket
+            addr       % client address
+           }).
 
 -define(TIMEOUT, 120000).
 
-%%%------------------------------------------------------------------------
 %%% API
-%%%------------------------------------------------------------------------
 
-%%-------------------------------------------------------------------------
 %% @spec (Socket) -> {ok,Pid} | ignore | {error,Error}
 %% @doc To be called by the supervisor in order to start the server.
 %%      If init/1 fails with Reason, the function returns {error,Reason}.
@@ -34,71 +31,61 @@
 %%      terminated and the function returns {error,Reason} or ignore,
 %%      respectively.
 %% @end
-%%-------------------------------------------------------------------------
+
 start_link() ->
     gen_fsm:start_link(?MODULE, [], []).
 
 set_socket(Pid, Socket) when is_pid(Pid), is_port(Socket) ->
     gen_fsm:send_event(Pid, {socket_ready, Socket}).
 
-%%%------------------------------------------------------------------------
 %%% Callback functions from gen_server
-%%%------------------------------------------------------------------------
 
-%%-------------------------------------------------------------------------
 %% Func: init/1
 %% Returns: {ok, StateName, StateData}          |
 %%          {ok, StateName, StateData, Timeout} |
 %%          ignore                              |
 %%          {stop, StopReason}
 %% @private
-%%-------------------------------------------------------------------------
+
 init([]) ->
     process_flag(trap_exit, true),
     {ok, 'WAIT_FOR_SOCKET', #state{}}.
 
-%%-------------------------------------------------------------------------
 %% Func: StateName/2
 %% Returns: {next_state, NextStateName, NextStateData}          |
 %%          {next_state, NextStateName, NextStateData, Timeout} |
 %%          {stop, Reason, NewStateData}
 %% @private
-%%-------------------------------------------------------------------------
+
 'WAIT_FOR_SOCKET'({socket_ready, Socket}, State) when is_port(Socket) ->
-                                                % Now we own the socket
-                                                %inet:setopts(Socket, [{active, once}, {packet, 2}, binary]),
-    %inet:setopts(Socket, [{active, once}, {packet, 0}, binary]),
-    %inet:setopts(Socket, [{active, once}, list]),
+    %% Now we own the socket
     inet:setopts(Socket, [{active, once}]),
     {ok, {IP, _Port}} = inet:peername(Socket),
     {next_state, 'WAIT_FOR_DATA', State#state{socket=Socket, addr=IP}, ?TIMEOUT};
 'WAIT_FOR_SOCKET'(Other, State) ->
-    error_logger:error_msg("State: 'WAIT_FOR_SOCKET'. Unexpected message: ~p\n", [Other]),
+    error_logger:error_msg("'WAIT_FOR_SOCKET' unexpected message: ~p\n", [Other]),
     %% Allow to receive async messages
     {next_state, 'WAIT_FOR_SOCKET', State}.
 
 %% Notification event coming from client
 'WAIT_FOR_DATA'({data, Data}, #state{socket=Socket} = State) ->
-    io:format("~p Got data: ~p\n", [self(), Data]),
+    error_logger:info_msg("Received data: ~p\n", [Data]),
     handle_request(Data, Socket),
     {next_state, 'WAIT_FOR_DATA', State, ?TIMEOUT};
-
 'WAIT_FOR_DATA'(timeout, State) ->
-    error_logger:error_msg("~p Client connection timeout - closing.\n", [self()]),
+    error_logger:error_msg("'WAIT_FOR_DATA' client connection timeout - closing.~n", []),
     {stop, normal, State};
-
 'WAIT_FOR_DATA'(Data, State) ->
-    io:format("~p Ignoring data: ~p\n", [self(), Data]),
+    error_logger:warning_msg("'WAIT_FOR_DATA' ignoring: ~p~n", [Data]),
     {next_state, 'WAIT_FOR_DATA', State, ?TIMEOUT}.
 
 handle_request(Data, Socket) ->
     case Data -- "\r\n" of
         "get " ++ Key ->
-            %%case tcp_db:get_value(Key) of
             case tcp_db:lookup(Key) of
-                {atomic, [Val]} ->
+                [Val] ->
                     Ret = "200 " ++ Val ++ "\n";
-                {atomic, []} ->
+                [] ->
                     Ret = "500 not found\n";
                 Other ->
                     error_logger:error_msg("~p Database error: ~p.\n", [self(), Other]),
@@ -109,17 +96,17 @@ handle_request(Data, Socket) ->
             ok
     end.
 
-%%-------------------------------------------------------------------------
+
 %% Func: handle_event/3
 %% Returns: {next_state, NextStateName, NextStateData}          |
 %%          {next_state, NextStateName, NextStateData, Timeout} |
 %%          {stop, Reason, NewStateData}
 %% @private
-%%-------------------------------------------------------------------------
+
 handle_event(Event, StateName, StateData) ->
     {stop, {StateName, undefined_event, Event}, StateData}.
 
-%%-------------------------------------------------------------------------
+
 %% Func: handle_sync_event/4
 %% Returns: {next_state, NextStateName, NextStateData}            |
 %%          {next_state, NextStateName, NextStateData, Timeout}   |
@@ -128,17 +115,17 @@ handle_event(Event, StateName, StateData) ->
 %%          {stop, Reason, NewStateData}                          |
 %%          {stop, Reason, Reply, NewStateData}
 %% @private
-%%-------------------------------------------------------------------------
+
 handle_sync_event(Event, _From, StateName, StateData) ->
     {stop, {StateName, undefined_event, Event}, StateData}.
 
-%%-------------------------------------------------------------------------
+
 %% Func: handle_info/3
 %% Returns: {next_state, NextStateName, NextStateData}          |
 %%          {next_state, NextStateName, NextStateData, Timeout} |
 %%          {stop, Reason, NewStateData}
 %% @private
-%%-------------------------------------------------------------------------
+
 handle_info({tcp, Socket, Bin}, StateName, #state{socket=Socket} = StateData) ->
     %% Flow control: enable forwarding of next TCP message
     inet:setopts(Socket, [{active, once}]),
@@ -146,29 +133,27 @@ handle_info({tcp, Socket, Bin}, StateName, #state{socket=Socket} = StateData) ->
 
 handle_info({tcp_closed, Socket}, _StateName,
             #state{socket=Socket, addr=Addr} = StateData) ->
-    error_logger:info_msg("~p Client ~p disconnected.\n", [self(), Addr]),
+    error_logger:info_msg("Client ~p disconnected.~n", [Addr]),
     {stop, normal, StateData};
 
 handle_info(_Info, StateName, StateData) ->
     {noreply, StateName, StateData}.
 
-%%-------------------------------------------------------------------------
+
 %% Func: terminate/3
 %% Purpose: Shutdown the fsm
 %% Returns: any
 %% @private
-%%-------------------------------------------------------------------------
+
 terminate(_Reason, _StateName, #state{socket=Socket}) ->
     (catch gen_tcp:close(Socket)),
     ok.
 
-%%-------------------------------------------------------------------------
+
 %% Func: code_change/4
 %% Purpose: Convert process state when code is changed
 %% Returns: {ok, NewState, NewStateData}
 %% @private
-%%-------------------------------------------------------------------------
+
 code_change(_OldVsn, StateName, StateData, _Extra) ->
     {ok, StateName, StateData}.
-
-

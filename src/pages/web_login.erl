@@ -15,15 +15,14 @@ body() ->
     Body = 
         [
          #panel{class=mainPanel, body=
-                [
-                 #label {text="username"},
+                [#label {text="username"},
                  #textbox {id=username, postback=login, next=password},
                  #p{},
                  #label { text="password" },
                  #password {id=password, postback=login, next=submit},
                  #p{},
-                 #button {id=submit, text="Login", postback=login}
-                ]}
+                 #button {id=submit, text="Login", postback=login}]},
+         #link {text="register", postback=register}
         ],
     wf:wire(submit, username, #validate {validators=[#is_required {text="Required."}]}),
     wf:wire(submit, password, #validate {validators=[#is_required {text="Required."}]}),
@@ -37,16 +36,19 @@ authenticate(Username, Password) ->
         false -> invalid
     end.
 
+event(register) ->
+    wf:redirect("register");
+
 event(login) ->
     case authenticate(hd(wf:q(username)), hd(wf:q(password))) of
         {auth, User} ->
-            wf:flash("Correct"),
+            db:login_user(User),
             [Domain] = db:get_domains_by_user_id(User#user.id),
             wf:user({User, Domain}),
             wf:role(auth, true),
-            wf:redirect("domain");
+            wf:redirect_from_login("domain");
         _ ->
-            wf:flash ("Incorrect")
+            wf:flash("Incorrect")
     end;
 
 event(_) -> ok.

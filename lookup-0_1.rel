@@ -1,0 +1,8 @@
+{release, {"tcp_rel", "0.1"},
+ {erts, "5.6.5"},
+ [{kernel, "2.12.5"},
+  {stdlib, "1.15.5"},
+  {sasl, "2.1.5.4"},
+  {mnesia, "4.4.7"},
+  {tcp_server, "0.1"}]
+}.

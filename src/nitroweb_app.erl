@@ -38,4 +38,26 @@ route(Path) -> nitrogen:route(Path).
 %% of a page. Alternatively, you can use the wf:redirect* functions to 
 %% issue a client-side redirect to a new page.
 
-request(Module) -> nitrogen:request(Module).
+request(Module) -> 
+%%     io:format("Module: ~p~n", [Module]),
+%%     io:format("Role: ~p~n", [wf:role(auth)]),
+    case Module of
+        web_login -> ok;
+        web_register -> ok;
+        _ ->
+            case wf:role(auth) of 
+                true ->
+                    ok;
+                false ->
+                    wf:redirect_to_login("/web/login")
+            end
+    end.
+
+%%                        nitrogen:request(Module).
+%% request(Module) -> 
+%%     case wf:role(auth) of 
+%%         true ->
+%%             ok;
+%%         false ->
+%%             wf:redirect_to_login("/web/login")
+%%     end.
