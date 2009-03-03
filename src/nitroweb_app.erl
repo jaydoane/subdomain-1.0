@@ -6,7 +6,13 @@
 %% start(_, _) -> mnesia:start(), crypto:start(), nitrogen:start().
 %% stop(_) -> nitrogen:stop(), crypto:stop(), mnesia:stop().
 
-start(_, _) -> nitrogen:start().
+start(_, _) -> 
+    {ok, App} = application:get_application(),
+    {ok, DataNodes} = application:get_env(App, data_nodes),
+    error_logger:info_msg("joining data nodes ~p~n", [DataNodes]),
+    mnesia:change_config(extra_db_nodes, DataNodes),
+    nitrogen:start().
+
 stop(_) -> nitrogen:stop().
 
 %% route/1 lets you define new URL routes to your web pages, 
@@ -39,8 +45,8 @@ route(Path) -> nitrogen:route(Path).
 %% issue a client-side redirect to a new page.
 
 request(Module) -> 
-%%     io:format("Module: ~p~n", [Module]),
-%%     io:format("Role: ~p~n", [wf:role(auth)]),
+    %%     io:format("Module: ~p~n", [Module]),
+    %%     io:format("Role: ~p~n", [wf:role(auth)]),
     case Module of
         web_login -> ok;
         web_register -> ok;
@@ -52,12 +58,3 @@ request(Module) ->
                     wf:redirect_to_login("/web/login")
             end
     end.
-
-%%                        nitrogen:request(Module).
-%% request(Module) -> 
-%%     case wf:role(auth) of 
-%%         true ->
-%%             ok;
-%%         false ->
-%%             wf:redirect_to_login("/web/login")
-%%     end.

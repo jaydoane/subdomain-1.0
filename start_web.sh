@@ -1,9 +1,11 @@
 #!/bin/sh
 cd `dirname $0`
 
-echo Starting Nitrogen.
+echo Starting web.
 erl \
 	-sname web \
 	-pa ./ebin -pa ./include \
 	-s make all \
-	-eval "application:start(nitroweb)"
+	-s crypto start \
+	-s mnesia start \
+	-eval "application:start(web)"
