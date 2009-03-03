@@ -71,8 +71,8 @@ body() ->
                                                  #tablecell {body=#button {id=delete_button, 
                                                                            text="delete"}}
                                                 ]}}]},
-                     #p{},
-                     #p{},
+                     #p {},
+                     #p {},
                      #panel {class=createPanel, body=
                              [#span {text="from: "},
                               #textbox {id=from_localpart, next=submit},
@@ -84,7 +84,19 @@ body() ->
                               #textbox {id=note},
                               #br{},
                               #br{},
-                              #button{id=submit, text="create", postback=create}]}]},
+                              #button{id=submit, text="create", postback=create}]},
+                     #p {},
+                     #panel {class=createPanel, body=
+                             [#span {text="change all 'to' addresses: "},
+                              #textbox {id=old_to, text=User#user.email},
+                              #span {text="  to: "},
+                              #textbox {id=new_to, text=""},
+                              #span {text=" also change default email"},
+                              #checkbox {id=default_email_checkbox, checked=true},
+                              #br{},
+                              #br{},
+                              #button{id=change_to, text="change", postback=change_to}]}
+                    ]},
             #link {text="logout", postback=logout}
            ],
     wf:wire(submit, from_localpart, #validate {validators=
@@ -95,6 +107,8 @@ body() ->
                                                       function=fun is_name_valid/2}
                                              ]}),
     wf:wire(submit, to, #validate {validators=[#is_required {text="Required"}]}),
+    wf:wire(change_to, old_to, #validate {validators=[#is_required {text="Required"}]}),
+    wf:wire(change_to, new_to, #validate {validators=[#is_required {text="Required"}]}),
     wf:render(Body).
 
 alternate_color(DataRow, Acc) when Acc == []; Acc==odd ->
@@ -107,6 +121,42 @@ event(logout) ->
     wf:role(auth, false),
     wf:redirect("login");
 
+event(change_to) ->
+    {User, Domain} = wf:user(),
+    [OldTo] = wf:q(old_to),
+    [NewTo] = wf:q(new_to),
+    DidDefaultChange = 
+        case wf:q(default_email_checkbox) of
+            ["on"] -> 
+                case db:change_default_email(NewTo, User#user.id) of
+                    ok ->
+                        %%io:format("default changed~n", []),
+                        wf:user({User#user{email=NewTo}, Domain}),
+                        true;
+                    _ ->
+                        false
+                end;
+            [] -> 
+                false
+        end,
+    %%io:format("change_to: ~p ~p ~p~n", [OldTo, NewTo, ChangeDefault]),
+    ChangedIds = db:change_aliases_to(OldTo, NewTo, Domain#domain.id),
+    %%io:format("changed_ids: ~p~n", [ChangedIds]),
+    DidIdsChange = 
+        case ChangedIds of
+            [] ->
+                false;
+            _ ->
+                true
+        end,
+    case DidDefaultChange or DidIdsChange of
+        true ->
+            wf:redirect("domain");
+        false ->
+            ok
+    end,
+    ok;
+
 event(create) ->
     {_User, Domain} = wf:user(),
     [Localpart] = wf:q(from_localpart),
@@ -116,17 +166,17 @@ event(create) ->
     {id, Id} = db:create_alias(From, To, Domain#domain.id, Note),
     IdStr = integer_to_list(Id),
     wf:insert_bottom(
-      alias_table, 
-      #tablerow {
-        id=IdStr, cells=
-        [#tablecell {text=local_part(From)},
-         #tablecell {text=To},
-         #tablecell {text=Note},
-         #tablecell {body=#checkbox {
-                       checked=true, postback={toggle_active, IdStr}}},
-         #tablecell {body=#button {
-                       text="delete", postback={delete, IdStr}}}
-        ]}),
+        alias_table, 
+        #tablerow {
+            id=IdStr, cells=
+            [#tablecell {text=local_part(From)},
+             #tablecell {text=To},
+             #tablecell {text=Note},
+             #tablecell {body=#checkbox {
+                             checked=true, postback={toggle_active, IdStr}}},
+             #tablecell {body=#button {
+                             text="delete", postback={delete, IdStr}}}
+            ]}),
     ok;
 
 event({delete, IdStr}) ->

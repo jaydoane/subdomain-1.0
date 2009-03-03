@@ -1,10 +1,6 @@
--module (nitroweb_app).
+-module (web_app).
 -export ([start/2, stop/1, route/1, request/1]).
 -behavior(application).
-
-%% why does this lock up the shell on q().?
-%% start(_, _) -> mnesia:start(), crypto:start(), nitrogen:start().
-%% stop(_) -> nitrogen:stop(), crypto:stop(), mnesia:stop().
 
 start(_, _) -> 
     {ok, App} = application:get_application(),

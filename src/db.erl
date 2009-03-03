@@ -1,5 +1,3 @@
-%% {ok,_} = mnesia:change_config(extra_db_nodes,[dbm@alu]).
-
 -module(db).
 
 -import(string, [to_lower/1]).
@@ -14,6 +12,7 @@
          get_user_by_name/1,
          is_username_available/1,
          is_auth_user/2,
+         change_default_email/2,
          create_domain/2,
          create_base_domains/1,
          is_domain_available/1,
@@ -24,6 +23,7 @@
          get_aliases_by_domain_id/1,
          get_alias_by_id/1,
          toggle_alias_active_by_id/1,
+         change_aliases_to/3,
          delete_alias_by_id/1
         ]).
 
@@ -33,7 +33,7 @@
 
 -define(sha_len, 160).
 -define(counter_incr, 1).
--define(base_domains, ["m82.com", "ememe.com"]).
+-define(base_domains, ["m82.com"]).
 
 init() ->
     init([node()], ?base_domains).
@@ -105,6 +105,18 @@ create_user(Name, Password, Email) ->
              end,
     create_entry(user, Key, RowGen).
 
+change_default_email(Email, User_id) ->
+    case do(qlc:q([X || X <- mnesia:table(user), 
+                        X#user.id =:= User_id,
+                        X#user.email /= Email])) of
+        [User] ->
+            Update = User#user{email=Email},
+            db:write(Update),
+            ok;
+        [] ->
+            unchanged
+    end.
+        
 login_user(User) ->
     Update = User#user{last_access=erlang:localtime()},
     db:write(Update),
@@ -192,6 +204,19 @@ toggle_alias_active_by_id(Id) ->
     db:write(Update),
     State.
 
+change_aliases_to(To, To, _Domain_id) ->
+    [];
+change_aliases_to(OldTo, NewTo, Domain_id) ->
+    UpdatedAliases = do(qlc:q([X#alias {to=NewTo} || 
+                                  X <- mnesia:table(alias),
+                                  X#alias.domain_id =:= Domain_id,
+                                  X#alias.to =:= OldTo])),
+    mnesia:transaction(
+        fun() -> 
+                [mnesia:write(A) || A <- UpdatedAliases]
+        end),
+    [A#alias.id || A <- UpdatedAliases].
+
 crud_test_() ->   
   {setup,
    fun() -> crypto:start(), mnesia:start(), create_tables([]) end,
@@ -213,6 +238,11 @@ crud_test_() ->
             ?_assert({id, 2} =:= create_alias("SPAMMER.COM@jay.example.com", 
                                               "jay@foo.com", 1, "mylogin:mypass")),
             ?_assert({error, exists} =:= create_alias("SPAMMER.COM@jay.example.com", 
-                                                      "jay@foo.com", 1, "mylogin:mypass"))
+                                                      "jay@foo.com", 1, "mylogin:mypass")),
+            ?_assert([] =:= change_aliases_to("bogus", "new@unused.com", 1)),
+            ?_assert([] =:= change_aliases_to("bogus", "new@unused.com", 0)),
+            ?_assert(2 == length(change_aliases_to("jay@foo.com", "jay@new.com", 1))),
+            ?_assert(unchanged =:= change_default_email("jay@foo.com", 1)),
+            ?_assert(ok =:= change_default_email("jay@new.com", 1))
            ]
    end}.

@@ -4,8 +4,6 @@
          lookup/1
         ]).
 
-%%-include_lib("stdlib/include/qlc.hrl").
-
 -include("schema.hrl").
 
 lookup(Key) ->
