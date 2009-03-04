@@ -44,6 +44,7 @@ request(Module) ->
     %%     io:format("Module: ~p~n", [Module]),
     %%     io:format("Role: ~p~n", [wf:role(auth)]),
     case Module of
+        web_index -> ok;
         web_login -> ok;
         web_register -> ok;
         _ ->

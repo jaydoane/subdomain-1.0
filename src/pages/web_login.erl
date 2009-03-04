@@ -13,15 +13,17 @@ title() ->
 
 body() ->
     Body = 
-        [
-         #panel{class=mainPanel, body=
-                [#label {text="username"},
-                 #textbox {id=username, postback=login, next=password},
-                 #p{},
-                 #label { text="password" },
-                 #password {id=password, postback=login, next=submit},
-                 #p{},
-                 #button {id=submit, text="Login", postback=login}]},
+        [#panel 
+         {class=mainPanel, body=
+          [#label {text="username"},
+           #textbox {id=username, postback=login, next=password},
+           #p{},
+           #label { text="password" },
+           #password {id=password, postback=login, next=submit},
+           #p{},
+           #button {id=submit, text="Login", postback=login}
+          ]
+         },
          #link {text="register", postback=register}
         ],
     wf:wire(submit, username, #validate {validators=[#is_required {text="Required."}]}),
@@ -37,7 +39,7 @@ authenticate(Username, Password) ->
     end.
 
 event(register) ->
-    wf:redirect("register");
+    wf:redirect("/web/register");
 
 event(login) ->
     case authenticate(hd(wf:q(username)), hd(wf:q(password))) of

@@ -84,15 +84,16 @@ body() ->
                               #textbox {id=note},
                               #br{},
                               #br{},
-                              #button{id=submit, text="create", postback=create}]},
+                              #button{id=submit, text="create alias", postback=create}]},
                      #p {},
-                     #panel {class=createPanel, body=
-                             [#span {text="change all 'to' addresses: "},
+                     #panel {class=createPanel, show_if=false, body=
+                             [#span {text="change all 'to' addresses from: "},
                               #textbox {id=old_to, text=User#user.email},
                               #span {text="  to: "},
                               #textbox {id=new_to, text=""},
-                              #span {text=" also change default email"},
+                              #p {},
                               #checkbox {id=default_email_checkbox, checked=true},
+                              #span {text=" also change default email"},
                               #br{},
                               #br{},
                               #button{id=change_to, text="change", postback=change_to}]}
@@ -119,7 +120,7 @@ alternate_color(DataRow, Acc) when Acc == even ->
 event(logout) ->
     wf:user(undefined),
     wf:role(auth, false),
-    wf:redirect("login");
+    wf:redirect("/web/login");
 
 event(change_to) ->
     {User, Domain} = wf:user(),
@@ -177,6 +178,8 @@ event(create) ->
              #tablecell {body=#button {
                              text="delete", postback={delete, IdStr}}}
             ]}),
+    wf:set(from_localpart, ""),
+    wf:set(note, ""),
     ok;
 
 event({delete, IdStr}) ->
