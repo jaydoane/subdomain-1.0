@@ -73,7 +73,7 @@ body() ->
                                                 ]}}]},
                      #p {},
                      #p {},
-                     #panel {class=createPanel, body=
+                     #panel {id=create_panel, class=createPanel, body=
                              [#span {text="from: "},
                               #textbox {id=from_localpart, next=submit},
                               #span {text="@"},
@@ -86,7 +86,7 @@ body() ->
                               #br{},
                               #button{id=submit, text="create alias", postback=create}]},
                      #p {},
-                     #panel {class=createPanel, show_if=false, body=
+                     #panel {id=change_panel, class=createPanel, show_if=false, body=
                              [#span {text="change all 'to' addresses from: "},
                               #textbox {id=old_to, text=User#user.email},
                               #span {text="  to: "},
@@ -101,15 +101,16 @@ body() ->
             #link {text="logout", postback=logout}
            ],
     wf:wire(submit, from_localpart, #validate {validators=
-                                             [#is_required {text="Required"},
-                                              #custom{text="Exists", tag=ignored_tag,
-                                                      function=fun is_alias_available/2},
-                                              #custom{text="Invalid", tag=ignored_tag,
-                                                      function=fun is_name_valid/2}
-                                             ]}),
+                                               [#is_required {text="Required"},
+                                                #custom{text="Exists", tag=ignored_tag,
+                                                        function=fun is_alias_available/2},
+                                                #custom{text="Invalid", tag=ignored_tag,
+                                                        function=fun is_name_valid/2}
+                                               ]}),
     wf:wire(submit, to, #validate {validators=[#is_required {text="Required"}]}),
-    wf:wire(change_to, old_to, #validate {validators=[#is_required {text="Required"}]}),
-    wf:wire(change_to, new_to, #validate {validators=[#is_required {text="Required"}]}),
+%% this breaks everything if uncommented and change_panel show_if=false
+%%     wf:wire(change_to, old_to, #validate {validators=[#is_required {text="Required"}]}),
+%%     wf:wire(change_to, new_to, #validate {validators=[#is_required {text="Required"}]}),
     wf:render(Body).
 
 alternate_color(DataRow, Acc) when Acc == []; Acc==odd ->
@@ -167,17 +168,17 @@ event(create) ->
     {id, Id} = db:create_alias(From, To, Domain#domain.id, Note),
     IdStr = integer_to_list(Id),
     wf:insert_bottom(
-        alias_table, 
-        #tablerow {
-            id=IdStr, cells=
-            [#tablecell {text=local_part(From)},
-             #tablecell {text=To},
-             #tablecell {text=Note},
-             #tablecell {body=#checkbox {
-                             checked=true, postback={toggle_active, IdStr}}},
-             #tablecell {body=#button {
-                             text="delete", postback={delete, IdStr}}}
-            ]}),
+      alias_table, 
+      #tablerow {
+        id=IdStr, cells=
+        [#tablecell {text=local_part(From)},
+         #tablecell {text=To},
+         #tablecell {text=Note},
+         #tablecell {body=#checkbox {
+                       checked=true, postback={toggle_active, IdStr}}},
+         #tablecell {body=#button {
+                       text="delete", postback={delete, IdStr}}}
+        ]}),
     wf:set(from_localpart, ""),
     wf:set(note, ""),
     ok;

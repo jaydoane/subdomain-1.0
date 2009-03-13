@@ -1,10 +1,6 @@
 #!/bin/sh
 cd `dirname $0`
-
 echo Starting lookup.
-erl \
-	-sname lookup \
-	-pa ./ebin -pa ./include \
-	-s make all \
-	-s mnesia start \
-	-eval "application:start(lookup)"
+exec erl -pa ebin -s make all -sname lookup -s lookup \
+    -mnesia extra_db_nodes "[dbm@`hostname -s`]" \
+    -boot start_sasl

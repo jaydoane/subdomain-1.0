@@ -2,12 +2,11 @@
 -export ([start/2, stop/1, route/1, request/1]).
 -behavior(application).
 
-start(_, _) -> 
-    {ok, App} = application:get_application(),
-    {ok, DataNodes} = application:get_env(App, data_nodes),
-    error_logger:info_msg("joining data nodes ~p~n", [DataNodes]),
-    mnesia:change_config(extra_db_nodes, DataNodes),
-    nitrogen:start().
+start(_, _) -> nitrogen:start().
+%%     {ok, App} = application:get_application(),
+%%     {ok, DataNodes} = application:get_env(App, data_nodes),
+%%     error_logger:info_msg("joining data nodes ~p~n", [DataNodes]),
+%%     mnesia:change_config(extra_db_nodes, DataNodes),
 
 stop(_) -> nitrogen:stop().
 

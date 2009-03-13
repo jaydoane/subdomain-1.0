@@ -26,11 +26,11 @@ start_client() ->
 
 start(_Type, _Args) ->
     {ok, App} = application:get_application(),
-    {ok, DataNodes} = application:get_env(App, data_nodes),
-    error_logger:info_msg("joining data nodes ~p~n", [DataNodes]),
-    mnesia:change_config(extra_db_nodes, DataNodes),
+%%     {ok, DataNodes} = application:get_env(App, data_nodes),
+%%     error_logger:info_msg("joining data nodes ~p~n", [DataNodes]),
+%%     mnesia:change_config(extra_db_nodes, DataNodes),
     ListenPort = get_app_env(listen_port, ?DEFAULT_PORT),
-    error_logger:info_msg("~p starting on port ~p~n", [App, ListenPort]),
+    error_logger:info_msg("~p listening on port ~p~n", [App, ListenPort]),
     supervisor:start_link({local, ?MODULE}, ?MODULE, [ListenPort, tcp_lookup_fsm]).
 
 stop(_State) ->

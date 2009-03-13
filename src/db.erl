@@ -17,6 +17,8 @@
          create_base_domains/1,
          is_domain_available/1,
          get_domains_by_user_id/1,
+         get_domain_by_name/1,
+         get_user_for_domain_name/1,
          get_base_domains/0,
          create_alias/4,
          is_alias_available/1,
@@ -24,6 +26,7 @@
          get_alias_by_id/1,
          toggle_alias_active_by_id/1,
          change_aliases_to/3,
+         user_passwords_int_to_bin/0,
          delete_alias_by_id/1
         ]).
 
@@ -31,7 +34,6 @@
 -include_lib("stdlib/include/qlc.hrl").
 -include("schema.hrl").
 
--define(sha_len, 160).
 -define(counter_incr, 1).
 -define(base_domains, ["m82.com"]).
 
@@ -98,7 +100,7 @@ is_username_available(Name) ->
 create_user(Name, Password, Email) ->
     Key = to_lower(Name),
     RowGen = fun(Id) ->
-                     <<Digest:?sha_len>> = crypto:sha(Password),
+                     Digest = crypto:sha(Password),
                      #user{id=Id, name=Key, email=Email, pass=Digest, 
                            created=erlang:localtime(), 
                            last_access=erlang:localtime()}
@@ -122,9 +124,11 @@ login_user(User) ->
     db:write(Update),
     Update.
 
-is_auth_user(Name, Password) ->
+is_auth_user(Name, Password) when is_list(Password) ->
+    is_auth_user(Name, crypto:sha(Password));
+
+is_auth_user(Name, Digest) when is_binary(Digest) ->
     LowerName = to_lower(Name),
-    <<Digest:?sha_len>> = crypto:sha(Password),
     case length(do(qlc:q([X#user.name || X <- mnesia:table(user), 
                                          X#user.name =:= LowerName, 
                                          X#user.pass =:= Digest]))) of
@@ -133,6 +137,24 @@ is_auth_user(Name, Password) ->
         0 ->
             false
     end.
+
+get_user_for_domain_name(Name) ->
+    LowerName = to_lower(Name),
+    do(qlc:q([U || D <- mnesia:table(domain), 
+                   D#domain.name =:= LowerName,
+                   U <- mnesia:table(user),
+                   U#user.id =:= D#domain.user_id])).    
+
+%% one-time data repair
+user_passwords_int_to_bin() ->
+    UpdatedUsers = do(qlc:q([U#user {
+                               pass=mochihex:to_bin(mochihex:to_hex(U#user.pass))}
+                             || U <- mnesia:table(user)])),
+    mnesia:transaction(
+      fun() -> 
+              [mnesia:write(U) || U <- UpdatedUsers]
+      end),
+    UpdatedUsers.
 
 is_domain_available(Name) ->
     LowerName = to_lower(Name),
@@ -159,6 +181,13 @@ create_base_domains([]) ->
 
 get_base_domains() ->
     get_domains_by_user_id(0).
+
+get_domain_by_name(Name) ->
+    F = fun() ->
+                mnesia:read(domain, Name)
+        end,
+    {atomic, Val} = mnesia:transaction(F),
+    Val.
 
 get_domains_by_user_id(User_id) ->
     do(qlc:q([X || X <- mnesia:table(domain), X#domain.user_id =:= User_id])).
@@ -233,6 +262,8 @@ crud_test_() ->
             ?_assert(false =:= is_domain_available("jay.example.com")),
             ?_assert({error, exists} =:= create_domain("jay.example.com", 1)),
             ?_assert(1 =:= length(get_domains_by_user_id(1))),
+            ?_assert(1 =:= length(get_domain_by_name("jay.example.com"))),
+            ?_assert(1 =:= length(get_user_for_domain_name("jay.example.com"))),
             ?_assert({id, 1} =:= create_alias("spammer.com@jay.example.com", 
                                               "jay@foo.com", 1, "mylogin:mypass")),
             ?_assert({id, 2} =:= create_alias("SPAMMER.COM@jay.example.com", 

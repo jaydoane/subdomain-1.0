@@ -12,10 +12,15 @@ body() ->
     #panel 
       {class=mainPanel, body=
        [
+        #h2 {text="New! Automatically fill email registration boxes with a customized, valid address"},
+        "If you use ", #link {text="firefox", url="http://www.mozilla.com/firefox/"}, ", ",
+        "and have installed ", #link {text="greasemonkey", url="https://addons.mozilla.org/en-US/firefox/addon/748"}, ", ",
+        "this ", #link {text="email-filler greasemonkey script", url="/email-filler.user.js"},
+        " in conjuntion with an account on this site, will automatically create a new alias and fill in the email box on many registration pages.",
         #h3 {text="What does this site do?"},
         "If you are like most people, you may have a single email address that you really care about.  Once the spammers get ahold of it, you rely on various kinds of filters to send the spam to a junk mail folder.  And if things get really bad, you may be forced to abandon that address, and painfully inform your correspondents of its replacement.",
         #p {},
-        "With this web site, when you ", #link {text="register", postback=register}, " you create a subdomain over which have complete control.  You can then create as many email aliases as you want and configure them to forward to any email address you like, typically your primary account.  In the event that one of your alias addresses falls into the hands of spammers, you can simply disable or delete it.",
+        "With this web site, when you ", #link {text="register", postback=register}, " you create a subdomain over which you have complete control.  You can then create as many email aliases as you want and configure them to forward to any email address you like, typically your primary account.  In the event that one of your alias addresses falls into the hands of spammers, you can simply disable or delete it.",
         #h3 {text="How can you use it?"},
         "It's recommended to create a new alias for each web site that requires an email address for registration.  For example, if somesite.com wants you to enter an email address, and assuming you've already registered here and created a subdomain yourname.m82.com, you would create a new alias somesite.com@yourname.m82.com which will forward to your default email address.",
         #p {},
