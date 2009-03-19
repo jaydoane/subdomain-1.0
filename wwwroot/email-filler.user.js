@@ -211,7 +211,7 @@ if (shapass == undefined) {
 var inputs = document.getElementsByTagName('input');
 for (var i = 0; i < inputs.length; i++) {
     var input = inputs[i];
-    if (input.type == 'text') {
+    if (input.type == 'text' && input.value.length < 1) {
         if (input.name.toLowerCase().indexOf('email') > -1 ||
             input.id.toLowerCase().indexOf('email') > -1) {
             domain = trim_leading_www(document.domain);
@@ -236,8 +236,8 @@ for (var i = 0; i < inputs.length; i++) {
                                   'data:\n' + response.responseText)
                                 }
                     });
-                break; // only fill once per page
             }
+            break;
         }
     }
  }
