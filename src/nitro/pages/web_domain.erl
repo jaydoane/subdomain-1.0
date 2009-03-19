@@ -9,25 +9,38 @@
 -export([main/0, 
          title/0, 
          body/0,
+         inplace_textbox_event/2,
          event/1]).
 
--record(rowdata, {row, from, to, note, active_checked, active_postback, delete}).
+-record(rowdata, {id, from, to, note_text, note_tag, active_checked, active_postback, delete}).
 
 main() -> 
-	#template {file="./wwwroot/template.html"}.
+    #template {file=filename:join(nitrogen:get_wwwroot(), "template2.html")}.
 
 title() ->
     {_User, Domain} = wf:user(),
     Domain#domain.name.
 
 get_map() -> 
-    #rowdata {row=from_row@id, 
-              from=from_cell@text, 
-              to=to_cell@text, 
-              note=note_cell@text, 
-              active_checked=active_checkbox@checked, 
-              active_postback=active_checkbox@postback, 
+    #rowdata {id=alias_id@id,
+              from=from_cell@text,
+              to=to_cell@text,
+              note_text=note_edit@text,
+              note_tag=note_edit@tag,
+              active_checked=active_checkbox@checked,
+              active_postback=active_checkbox@postback,
               delete=delete_button@postback}.
+
+get_data(Domain_id) ->
+    Aliases = lists:sort(db:get_aliases_by_domain_id(Domain_id)),
+    [#rowdata {id = integer_to_list(A#alias.id),
+               from = local_part(A#alias.from),
+               to = A#alias.to,
+               note_text = case A#alias.note of "" -> " "; Note -> Note end,
+               note_tag = integer_to_list(A#alias.id),
+               active_checked = A#alias.is_active,
+               active_postback = {toggle_active, integer_to_list(A#alias.id)},
+               delete = {delete, integer_to_list(A#alias.id)}} || A <- Aliases].
 
 split_address(Address) ->
     string:tokens(Address, "@").
@@ -35,16 +48,6 @@ split_address(Address) ->
 local_part(Address) ->
     [Localpart, _Domain] = split_address(Address),
     Localpart.
-
-get_data(Domain_id) ->
-    Aliases = lists:sort(db:get_aliases_by_domain_id(Domain_id)),
-    [#rowdata {row = integer_to_list(A#alias.id),
-               from = local_part(A#alias.from),
-               to = A#alias.to,
-               note = A#alias.note,
-               active_checked = A#alias.is_active,
-               active_postback = {toggle_active, integer_to_list(A#alias.id)},
-               delete = {delete, integer_to_list(A#alias.id)}} || A <- Aliases].
 
 body() ->
     {User, Domain} = wf:user(),
@@ -63,10 +66,10 @@ body() ->
                               #bind {id=binding, data=Data, map=Map, 
                                      transform=fun alternate_color/2,
                                      body=
-                                     #tablerow {id=from_row, cells=
+                                     #tablerow {id=alias_id, cells=
                                                 [#tablecell {id=from_cell},
                                                  #tablecell {id=to_cell},
-                                                 #tablecell {id=note_cell},
+                                                 #tablecell {body=#inplace_textbox {id=note_edit, tag=note_tag}},
                                                  #tablecell {body=#checkbox {id=active_checkbox}},
                                                  #tablecell {body=#button {id=delete_button, 
                                                                            text="delete"}}
@@ -114,9 +117,20 @@ body() ->
     wf:render(Body).
 
 alternate_color(DataRow, Acc) when Acc == []; Acc==odd ->
-    {DataRow, even, {from_row@style, "background-color: #eee;"}};
+    {DataRow, even, {alias_id@style, "background-color: #eee;"}};
 alternate_color(DataRow, Acc) when Acc == even ->
-    {DataRow, odd, {from_row@style, "background-color: #ccc;"}}.
+    {DataRow, odd, {alias_id@style, "background-color: #ccc;"}}.
+
+%% inplace_textbox brokenly replaces spaces with ;nbsp
+remove_nbsp_code(Str) ->
+    string:join(string:tokens(Str, "\302\240"), " ").
+
+inplace_textbox_event(IdStr, RawValue) ->
+    {Id, _} = string:to_integer(IdStr),
+    Value = remove_nbsp_code(RawValue),
+    %%io:format("inplace_textbox_event/2: ~p ~p~n", [Id, Value]),
+    ok = db:change_alias_note(Id, Value),
+    Value.
 
 event(logout) ->
     wf:user(undefined),
@@ -173,7 +187,7 @@ event(create) ->
         id=IdStr, cells=
         [#tablecell {text=local_part(From)},
          #tablecell {text=To},
-         #tablecell {text=Note},
+         #tablecell {body=#inplace_textbox {id=note_edit, text=Note, tag=IdStr}},
          #tablecell {body=#checkbox {
                        checked=true, postback={toggle_active, IdStr}}},
          #tablecell {body=#button {

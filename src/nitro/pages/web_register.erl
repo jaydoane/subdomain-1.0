@@ -4,10 +4,13 @@
 
 -include("schema.hrl").
 
--compile(export_all).
+-export([main/0, 
+         title/0, 
+         body/0,
+         event/1]).
 
 main() -> 
-	#template{file="./wwwroot/template.html"}.
+    #template {file=filename:join(nitrogen:get_wwwroot(), "template2.html")}.
 
 title() ->
 	"register".
@@ -61,7 +64,7 @@ register(Username, Password, Email, BaseDomain) ->
     DomainName = Username ++ "." ++ BaseDomain,
     {id, Domain_id} = db:create_domain(DomainName, User_id),
     {id, _Alias_id} = db:create_alias("example.com@" ++ DomainName, Email, Domain_id, 
-                                     "this is an example alias"),
+                                     "sample alias - click here to edit"),
     {User_id, Domain_id}.
 
 event(register) ->

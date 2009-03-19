@@ -3,6 +3,12 @@ body { background-color: #ccc; }
 .mainPanel { border: solid 5px #aaa; }
 .createPanel { border: solid 2px #aaa; padding: 10px}
 
+/* inplace_textbox */
+.label {
+    font-size: 1em;
+    font-weight: normal;
+}
+
 table.alias {
 	border-width: 0px 0px 0px 0px;
 	border-spacing: 0px;

@@ -12,8 +12,11 @@
 // @include       *
 // ==/UserScript==
 
-var host = "m82.com"; // should be set by config script
-//var host = "localhost";
+var resthost = "m82.com";
+if (document.location.hostname == "localhost") {
+    // assume development configuration - will likely break using ssl tunnels
+    resthost = "localhost";
+ }
 
 /**
 *
@@ -192,16 +195,16 @@ function sha1(msg) {
 
 var subdom = GM_getValue('subdomain');
 if (subdom == undefined) {
-    subdom = prompt("What is your m82.com subdomain?");
+    subdom = prompt("What is your " + resthost + " subdomain?");
     if (subdom.split(".").length < 2) {
-        subdom = subdom + '.' + host;
+        subdom = subdom + '.' + resthost;
     }
     GM_setValue('subdomain', subdom);
  };
 
 var shapass = GM_getValue('shapass');
 if (shapass == undefined) {
-    shapass = sha1(prompt("What is your m82.com password?"));
+    shapass = sha1(prompt("What is your " + resthost + " password?"));
     GM_setValue('shapass', shapass);
  };
 
@@ -211,13 +214,13 @@ for (var i = 0; i < inputs.length; i++) {
     if (input.type == 'text') {
         if (input.name.toLowerCase().indexOf('email') > -1 ||
             input.id.toLowerCase().indexOf('email') > -1) {
-            //domain = base_domain(document.domain);
-            alias = prompt("Create alias?", document.domain + '@' + subdom);
+            domain = trim_leading_www(document.domain);
+            alias = prompt("Create alias?", domain + '@' + subdom);
             if (alias) {
                 var email_input = input;
                 GM_xmlhttpRequest({
                     method: 'POST',
-                            url: 'http://' + host + ':7000/alias',
+                            url: 'http://' + resthost + ':7000/alias',
                             data: shapass + " " + escape(alias),
                             onload: function(response) {
                             if (response.status == 200 || response.status == 201) {
@@ -239,11 +242,10 @@ for (var i = 0; i < inputs.length; i++) {
     }
  }
 
-// function base_domain(domain) {
-//     toks = domain.split(".");
-//     if (toks.length > 2) {
-//         toks = toks.slice(-2);
-//     }
-//     return toks.join(".");
-// }
-
+function trim_leading_www(domain) {
+    toks = domain.split(".");
+    if (toks.length > 1 && toks[0] == 'www') {
+        toks = toks.slice(1);
+    }
+    return toks.join(".");
+}

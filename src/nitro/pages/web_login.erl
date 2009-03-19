@@ -1,12 +1,16 @@
 -module(web_login).
+
 -include_lib("nitrogen/include/wf.inc").
 
 -include("schema.hrl").
 
--compile(export_all).
+-export([main/0, 
+         title/0, 
+         body/0,
+         event/1]).
 
 main() -> 
-	#template{file="./wwwroot/template.html"}.
+    #template {file=filename:join(nitrogen:get_wwwroot(), "template2.html")}.
 
 title() ->
 	"login".

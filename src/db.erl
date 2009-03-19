@@ -26,7 +26,8 @@
          get_alias_by_id/1,
          toggle_alias_active_by_id/1,
          change_aliases_to/3,
-         user_passwords_int_to_bin/0,
+         change_alias_note/2,
+%%          user_passwords_int_to_bin/0,
          delete_alias_by_id/1
         ]).
 
@@ -146,15 +147,15 @@ get_user_for_domain_name(Name) ->
                    U#user.id =:= D#domain.user_id])).    
 
 %% one-time data repair
-user_passwords_int_to_bin() ->
-    UpdatedUsers = do(qlc:q([U#user {
-                               pass=mochihex:to_bin(mochihex:to_hex(U#user.pass))}
-                             || U <- mnesia:table(user)])),
-    mnesia:transaction(
-      fun() -> 
-              [mnesia:write(U) || U <- UpdatedUsers]
-      end),
-    UpdatedUsers.
+%% user_passwords_int_to_bin() ->
+%%     UpdatedUsers = do(qlc:q([U#user {
+%%                                pass=mochihex:to_bin(mochihex:to_hex(U#user.pass))}
+%%                              || U <- mnesia:table(user)])),
+%%     mnesia:transaction(
+%%       fun() -> 
+%%               [mnesia:write(U) || U <- UpdatedUsers]
+%%       end),
+%%     UpdatedUsers.
 
 is_domain_available(Name) ->
     LowerName = to_lower(Name),
@@ -232,6 +233,12 @@ toggle_alias_active_by_id(Id) ->
     Update = Alias#alias {is_active=State},
     db:write(Update),
     State.
+
+change_alias_note(Id, Note) ->
+    [Alias] = db:get_alias_by_id(Id),
+    Update = Alias#alias {note=Note},
+    db:write(Update),
+    ok.
 
 change_aliases_to(To, To, _Domain_id) ->
     [];
