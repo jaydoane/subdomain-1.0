@@ -30,7 +30,7 @@ function sha1(msg) {
 	function rotate_left(n,s) {
 		var t4 = ( n<<s ) | (n>>>(32-s));
 		return t4;
-	};
+	}
  
 	function lsb_hex(val) {
 		var str="";
@@ -44,7 +44,7 @@ function sha1(msg) {
 			str += vh.toString(16) + vl.toString(16);
 		}
 		return str;
-	};
+	}
  
 	function cvt_hex(val) {
 		var str="";
@@ -56,7 +56,7 @@ function sha1(msg) {
 			str += v.toString(16);
 		}
 		return str;
-	};
+	}
  
  
 	function Utf8Encode(string) {
@@ -83,7 +83,7 @@ function sha1(msg) {
 		}
  
 		return utftext;
-	};
+	}
  
 	var blockstart;
 	var i, j;
@@ -193,59 +193,142 @@ function sha1(msg) {
  
 }
 
-var subdom = GM_getValue('subdomain');
-if (subdom == undefined) {
-    subdom = prompt("What is your " + resthost + " subdomain?");
-    if (subdom.split(".").length < 2) {
-        subdom = subdom + '.' + resthost;
-    }
-    GM_setValue('subdomain', subdom);
- };
-
-var shapass = GM_getValue('shapass');
-if (shapass == undefined) {
-    shapass = sha1(prompt("What is your " + resthost + " password?"));
-    GM_setValue('shapass', shapass);
- };
-
-var inputs = document.getElementsByTagName('input');
-for (var i = 0; i < inputs.length; i++) {
-    var input = inputs[i];
-    if (input.type == 'text' && input.value.length < 1) {
-        if (input.name.toLowerCase().indexOf('email') > -1 ||
-            input.id.toLowerCase().indexOf('email') > -1) {
-            domain = trim_leading_www(document.domain);
-            alias = prompt("Create alias?", domain + '@' + subdom);
-            if (alias) {
-                var email_input = input;
-                GM_xmlhttpRequest({
-                    method: 'POST',
-                            url: 'http://' + resthost + ':7000/alias',
-                            data: shapass + " " + escape(alias),
-                            onload: function(response) {
-                            if (response.status == 200 || response.status == 201) {
-                                email_input.value = response.responseText;
-                            } else {
-                                alert('Alias not created: ' + ' ' + 
-                                      response.statusText + '\n' + response.responseText);
-                            }
-                        },
-                            onerror: function(response) {
-                            alert('Alias creation error: ' + response.status +
-                                  ' ' + response.statusText + '\n\n' +
-                                  'data:\n' + response.responseText)
-                                }
-                    });
-            }
-            break;
-        }
-    }
- }
-
 function trim_leading_www(domain) {
-    toks = domain.split(".");
+    var toks = domain.split(".");
     if (toks.length > 1 && toks[0] == 'www') {
         toks = toks.slice(1);
     }
     return toks.join(".");
 }
+
+// thanks to http://www.jonasjohn.de/
+function create_button(id, title){
+    var style = 'border:1px solid; border-color:#FC9 #630 #330 #F96; padding:1px 4px 1px 4px;' + 
+        'font:bold 8px verdana,sans-serif;color:#FFF;background:#F60;' + 
+        'text-decoration:none; margin: 0px;';
+    return ' <a id="'+id+'" href="javascript:void(0)" style="'+style+'">'+title+'</a>';
+}
+
+function get_subdom(host) {
+    var subdom = GM_getValue('subdomain');
+    if (!subdom) {
+        subdom = prompt("What is your " + host + " subdomain?");
+        if (subdom.split(".").length < 2) {
+            subdom = subdom + '.' + host;
+        }
+        GM_setValue('subdomain', subdom);
+    }
+    return subdom;
+}
+
+function get_shapass(host) {
+    var shapass = GM_getValue('shapass');
+    if (!shapass) {
+        shapass = sha1(prompt("What is your " + host + " password?"));
+        GM_setValue('shapass', shapass);
+    }
+    return shapass;
+}
+
+function is_empty_identifiable_email_textbox(input) {
+    if (input.type == 'text' && input.value.length < 1) {
+        var id = input.id.toLowerCase().replace('_', ''); // 'e_mail' ok
+        if (id.indexOf('email') > -1) {
+            return true;
+        }
+        if (id.indexOf('email') > -1 &&
+            document.getElementsByName(input.name).length == 1)
+            return true;
+    }
+    return false;
+}
+
+function filter_array(nodes, filter) {
+    var result = [];
+    for (var i=0; i<nodes.length; i++) {
+        var node = nodes[i];
+        if (filter(node)) {
+            result.push(node);
+        }
+    }
+    return result;
+}
+
+var domain = trim_leading_www(document.domain);
+
+var email_textboxes = filter_array(document.getElementsByTagName('input'),
+                                   is_empty_identifiable_email_textbox);
+console.log(email_textboxes);
+
+for (var i=0; i<email_textboxes.length; i++) (function(textbox){
+        //var textbox = email_textboxes[i];
+        console.log(textbox);
+        var subdom = get_subdom(resthost);
+        var shapass = get_shapass(resthost);
+
+        var create_alias = function(event) {
+            var alias = prompt("Create alias?", domain + '@' + subdom);
+            if (alias) {
+                var resturl = 'http://' + resthost + ':7000/alias';
+                GM_xmlhttpRequest({
+                    method: 'POST',
+                            url: resturl,
+                            data: shapass + " " + escape(alias),
+                            onload: function(response) {
+                            if (response.status == 200 || response.status == 201) {
+                                console.log(textbox);
+                                console.log(response);
+                                document.getElementById('gen_btn'+textbox.id).style.display = 'none';
+                                //textbox.value = response.responseText; // why doesn't this work?
+                                var tb;
+                                if (textbox.id) {
+                                    tb = document.getElementById(textbox.id);
+                                } else if (textbox.name) {
+                                    tb = document.getElementsByName(textbox.name)[0];
+                                } else {
+                                    console.error('could not get textbox to fill')
+                                        } 
+                                tb.value = response.responseText;
+                            } else {
+                                alert('Alias not created: ' + ' ' + response.statusText +
+                                      '\n' + response.responseText);
+                            }
+                        },
+                            onerror: function(response) {
+                            alert('Alias creation error: ' + response.status +
+                                  ' ' + response.statusText + '\n\n' +
+                                  'data:\n' + response.responseText);
+                        }
+                    });
+            }
+        };
+        var gen_btn = create_button('gen_btn'+textbox.id, 'use&nbsp;' + resthost + '&nbsp;alias');
+        console.log(gen_btn);
+        textbox.parentNode.innerHTML += "&nbsp;" + gen_btn;
+        document.getElementById('gen_btn'+textbox.id).addEventListener('click', create_alias, false);
+    })(email_textboxes[i]);
+
+function insert_auth_panel() {
+    var auth_panel = 
+        (<r><![CDATA[
+                     <div id='subd_auth_div' style='padding: 3px; border: 1px solid #111111'> 
+                     <form>
+                     <span>activate email-filler: &nbsp;&nbsp;domain</span> 
+                     <input id='subd_domain' type='textbox'/> 
+                     <span>.m82.com&nbsp;&nbsp;&nbsp;password</span> 
+                     <input id='subd_pass' type='password'/> 
+                     <input id='subd_auth_btn' type='button' value='authenticate'/>
+                     </form>
+                     </div>
+                     ]]></r>).toString();
+    document.body.innerHTML = auth_panel + document.body.innerHTML;
+}
+
+function auth_user(event) {
+    document.getElementById('subd_auth_div').style.display = 'none';
+}
+
+if (email_textboxes.length > 0) {
+    insert_auth_panel();
+    document.getElementById('subd_auth_btn').addEventListener('click', auth_user, false);
+ }
