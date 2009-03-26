@@ -21,7 +21,7 @@ body() ->
         "If you use ", #link {text="firefox", url="http://www.mozilla.com/firefox/"}, ", ",
         "and have installed ", #link {text="greasemonkey", url="https://addons.mozilla.org/en-US/firefox/addon/748"}, ", ",
         "this ", #link {text="email-filler greasemonkey script", url="/email-filler.user.js"},
-        " in conjuntion with an account on this site, will automatically create a new alias and fill in the email box on many registration pages.",
+        " in conjunction with an account on this site, will automatically create a new alias and fill in the email box on many registration pages.",
         #h3 {text="What does this site do?"},
         "If you are like most people, you may have a single email address that you really care about.  Once the spammers get ahold of it, you rely on various kinds of filters to send the spam to a junk mail folder.  And if things get really bad, you may be forced to abandon that address, and painfully inform your correspondents of its replacement.",
         #p {},
