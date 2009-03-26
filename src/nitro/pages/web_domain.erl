@@ -40,7 +40,8 @@ get_data(Domain_id) ->
                note_tag = integer_to_list(A#alias.id),
                active_checked = A#alias.is_active,
                active_postback = {toggle_active, integer_to_list(A#alias.id)},
-               delete = {delete, integer_to_list(A#alias.id)}} || A <- Aliases].
+               delete = {delete, integer_to_list(A#alias.id)}}
+     || A <- Aliases].
 
 split_address(Address) ->
     string:tokens(Address, "@").

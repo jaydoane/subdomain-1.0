@@ -34,6 +34,25 @@ respond(Req) ->
 
 %% Internal API
 
+respond(Req, 'GET', "/domain/" ++ Remainder) ->
+    case string:tokens(Remainder, "/") of
+        [DomainName, "auth", HexPassDigest] ->
+            error_logger:info_msg("Domain: ~p HexPassDigest: ~p~n", [DomainName, HexPassDigest]),
+            case db:get_user_for_domain_name(DomainName) of
+                [User] ->
+                    case db:is_auth_user(User#user.name, mochihex:to_bin(HexPassDigest)) of
+                        false ->
+                            Req:respond({401, [], "Not authorized"});
+                        true ->
+                            Req:respond({200, [], "Authorized"})
+                    end;
+                _ ->
+                    Req:respond({400, [], "Domain name does not exist: " ++ DomainName})
+            end;
+        _ ->
+            Req:respond({400, [], "Illegal path structure"})
+    end;
+
 respond(Req, 'POST', "/alias") ->
     Body = Req:recv_body(),
     %%error_logger:info_msg("Body: ~p~n", [Body]),
