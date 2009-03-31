@@ -191,13 +191,16 @@ event(create) ->
     [Localpart] = wf:q(from_localpart),
     From = Localpart ++ "@" ++ Domain#domain.name,
     [To] = wf:q(to),
-    [Note] = wf:q(note),
+    Note = case wf:q(note) of
+               [""] -> " "; %% else cannot edit empty inplace textbox
+               [Any] -> Any
+           end,
     {id, Id} = db:create_alias(From, To, Domain#domain.id, Note),
     IdStr = integer_to_list(Id),
     wf:insert_bottom(
       alias_table, 
       #tablerow {
-        id=IdStr, cells=
+        id=IdStr, class="d0", cells=
         [#tablecell {text=local_part(From)},
          #tablecell {text=To},
          #tablecell {body=#inplace_textbox {id=note_edit, text=Note, tag=IdStr}},
