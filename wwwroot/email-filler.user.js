@@ -8,7 +8,7 @@
 // ==UserScript==
 // @name          Email Filler
 // @namespace     http://m82.com/projects/emailfill/
-// @description   Fills email textboxes with auto generated email addresses
+// @description   Fills email textboxes with valid, auto generated email addresses using m82.com subdomain account
 // @include       *
 // ==/UserScript==
 

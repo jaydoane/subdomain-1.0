@@ -4,13 +4,20 @@
 
 -include("schema.hrl").
 
--export([main/0, 
+-export([main/0,
+         nav/0,
          title/0, 
          body/0,
          event/1]).
 
 main() -> 
     #template {file=filename:join(nitrogen:get_wwwroot(), "template2.html")}.
+
+nav() ->
+    #panel {class=nav_panel, 
+            body=[
+                  #link {text="about", postback=about}
+                 ]}.
 
 title() ->
 	"register".
@@ -66,6 +73,9 @@ register(Username, Password, Email, BaseDomain) ->
     {id, _Alias_id} = db:create_alias("example.com@" ++ DomainName, Email, Domain_id, 
                                      "sample alias - click here to edit"),
     {User_id, Domain_id}.
+
+event(about) ->
+    wf:redirect("/web/index");
 
 event(register) ->
     case register(hd(wf:q(username)), hd(wf:q(password)), 

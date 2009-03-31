@@ -5,12 +5,19 @@
 -include("schema.hrl").
 
 -export([main/0, 
+         nav/0,
          title/0, 
          body/0,
          event/1]).
 
 main() -> 
     #template {file=filename:join(nitrogen:get_wwwroot(), "template2.html")}.
+
+nav() ->
+    #panel {class=nav_panel, 
+            body=[
+                  #link {text="register", postback=register}
+                 ]}.
 
 title() ->
 	"login".
@@ -27,8 +34,7 @@ body() ->
            #p{},
            #button {id=submit, text="Login", postback=login}
           ]
-         },
-         #link {text="register", postback=register}
+         }
         ],
     wf:wire(submit, username, #validate {validators=[#is_required {text="Required."}]}),
     wf:wire(submit, password, #validate {validators=[#is_required {text="Required."}]}),

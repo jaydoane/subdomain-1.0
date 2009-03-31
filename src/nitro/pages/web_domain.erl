@@ -6,8 +6,9 @@
 
 -import(string, [to_lower/1]).
 
--export([main/0, 
-         title/0, 
+-export([main/0,
+         nav/0,
+         title/0,
          body/0,
          inplace_textbox_event/2,
          event/1]).
@@ -17,9 +18,17 @@
 main() -> 
     #template {file=filename:join(nitrogen:get_wwwroot(), "template2.html")}.
 
+nav() ->
+    #panel {class=nav_panel, 
+            body=[
+                  #link {text="about", postback=about},
+                  " ",
+                  #link {text="logout", postback=logout}
+                 ]}.
+
 title() ->
     {_User, Domain} = wf:user(),
-    Domain#domain.name.
+    "@" ++ Domain#domain.name.
 
 get_map() -> 
     #rowdata {id=alias_id@id,
@@ -77,6 +86,7 @@ body() ->
                                                 ]}}]},
                      #p {},
                      #p {},
+                     #br {},
                      #panel {id=create_panel, class=createPanel, body=
                              [#span {text="from: "},
                               #textbox {id=from_localpart, next=submit},
@@ -101,8 +111,7 @@ body() ->
                               #br{},
                               #br{},
                               #button{id=change_to, text="change", postback=change_to}]}
-                    ]},
-            #link {text="logout", postback=logout}
+                    ]}
            ],
     wf:wire(submit, from_localpart, #validate {validators=
                                                [#is_required {text="Required"},
@@ -118,9 +127,9 @@ body() ->
     wf:render(Body).
 
 alternate_color(DataRow, Acc) when Acc == []; Acc==odd ->
-    {DataRow, even, {alias_id@style, "background-color: #eee;"}};
+    {DataRow, even, {alias_id@class, "d0"}};
 alternate_color(DataRow, Acc) when Acc == even ->
-    {DataRow, odd, {alias_id@style, "background-color: #ccc;"}}.
+    {DataRow, odd, {alias_id@class, "d1"}}.
 
 %% inplace_textbox brokenly replaces spaces with ;nbsp
 remove_nbsp_code(Str) ->
@@ -137,6 +146,9 @@ event(logout) ->
     wf:user(undefined),
     wf:role(auth, false),
     wf:redirect("/web/login");
+
+event(about) ->
+    wf:redirect("/web/index");
 
 event(change_to) ->
     {User, Domain} = wf:user(),
