@@ -13,6 +13,7 @@
          is_username_available/1,
          is_auth_user/2,
          change_default_email/2,
+         change_password/2,
          create_domain/2,
          create_base_domains/1,
          is_domain_available/1,
@@ -114,6 +115,18 @@ change_default_email(Email, User_id) ->
                         X#user.email /= Email])) of
         [User] ->
             Update = User#user{email=Email},
+            db:write(Update),
+            ok;
+        [] ->
+            unchanged
+    end.
+        
+change_password(Password, User_id) ->
+    case do(qlc:q([X || X <- mnesia:table(user), 
+                        X#user.id =:= User_id])) of
+        [User] ->
+            Digest = crypto:sha(Password),
+            Update = User#user{pass=Digest},
             db:write(Update),
             ok;
         [] ->
