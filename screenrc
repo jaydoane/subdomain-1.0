@@ -1,8 +1,7 @@
 escape ^Zz
 startup_message off
 defscrollback 4096
-hardstatus alwayslastline '%{gk}[ %{G}%H %{g}]%{g}[%= %{wk}%?%-Lw%?%{=b kR}(%{W\
-}%n*%f%t%?(%u)%?%{=b kR})%{= kw}%?%+Lw%?%?%= %{g}][%{g} %l %{g}]'
+hardstatus alwayslastline '%{gk}[ %{G}%H %{g}]%{g}[%= %{wk}%?%-Lw%?%{=b kR}(%{W}%n*%f%t%?(%u)%?%{=b kR})%{= kw}%?%+Lw%?%?%= %{g}][%{g} %l %{g}]'
 
 # start each subdomain component in its own screen window
 
