@@ -1,0 +1,26 @@
+## Name of the node
+-sname nitrogen@{shorthostname}
+
+## Cookie for distributed erlang
+-setcookie {cookie}
+
+## Enable kernel poll and a few async threads
++K true
++A 5
+
+## Increase number of concurrent ports/sockets
+-env ERL_MAX_PORTS 4096
+
+## Tweak GC to run more often 
+-env ERL_FULLSWEEP_AFTER 10
+
+## Include .beam files for site.
+-pa ./site/ebin
+
+## Enable database calls
+-pa ./deps/subdomain/ebin
+-s mnesia
+-mnesia extra_db_nodes "[dbm@{shorthostname}]"
+
+## Run code at startup.
+-eval "application:start(nitrogen)"
