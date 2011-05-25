@@ -1,30 +1,37 @@
--module(web_domain).
+%% -*- mode: nitrogen -*-
+-module(domain).
 
--include_lib("nitrogen/include/wf.inc").
+-include_lib("nitrogen_core/include/wf.hrl").
 
 -include("schema.hrl").
 
 -import(string, [to_lower/1]).
 
--export([main/0,
-         nav/0,
-         title/0,
-         body/0,
-         inplace_textbox_event/2,
-         event/1]).
+-export([
+    main/0,
+    nav/0,
+    title/0,
+    body/0,
+    inplace_textbox_event/2,
+    is_alias_available/2,
+    event/1]).
 
 -record(rowdata, {id, from, to, note_text, note_tag, active_checked, active_postback, delete}).
 
 main() -> 
-    #template {file=filename:join(nitrogen:get_wwwroot(), "template2.html")}.
+    case wf:role(auth) of
+        true ->
+            #template { file="./site/templates/base.html" };
+        false ->
+            wf:redirect_to_login("login")
+    end.
 
 nav() ->
-    #panel {class=nav_panel, 
-            body=[
-                  #link {text="about", postback=about},
-                  " ",
-                  #link {text="logout", postback=logout}
-                 ]}.
+    #panel {class=nav_panel, body=[
+        #link {text="about", postback=about},
+        " ",
+        #link {text="logout", postback=logout}
+    ]}.
 
 title() ->
     {_User, Domain} = wf:user(),
@@ -63,121 +70,119 @@ body() ->
     {User, Domain} = wf:user(),
     Map = get_map(),
     Data = get_data(Domain#domain.id),
-    %%io:format("Data: ~p~n", [Data]),
-    Body = [#panel {class=mainPanel, body=
-                    [#table {id=alias_table, class=alias, rows=
-                             [#tablerow {cells=
-                                         [#tableheader {text="from"},
-                                          #tableheader {text="to"},
-                                          #tableheader {text="note"},
-                                          #tableheader {text="active"},
-                                          #tableheader {}
-                                         ]},
-                              #bind {id=binding, data=Data, map=Map, 
-                                     transform=fun alternate_color/2,
-                                     body=
-                                     #tablerow {id=alias_id, cells=
-                                                [#tablecell {id=from_cell},
-                                                 #tablecell {id=to_cell},
-                                                 #tablecell {body=#inplace_textbox {id=note_edit, tag=note_tag}},
-                                                 #tablecell {body=#checkbox {id=active_checkbox}},
-                                                 #tablecell {body=#button {id=delete_button, 
-                                                                           text="delete"}}
-                                                ]}}]},
-                     #p {},
-                     #p {},
-                     #br {},
-                     #panel {id=create_panel, class=createPanel, body=
-                             [#span {text="from: "},
-                              #textbox {id=from_localpart, next=submit},
-                              #span {text="@"},
-                              #span {text=Domain#domain.name},
-                              #span {text="  to: "},
-                              #textbox {id=to, text=User#user.email},
-                              #span {text="  note: "},
-                              #textbox {id=note},
-                              #br{},
-                              #br{},
-                              #button{id=submit, text="create alias", postback=create}]},
-                     #p {},
-                     #panel {id=change_panel, class=createPanel, show_if=false, body=
-                             [#span {text="change all 'to' addresses from: "},
-                              #textbox {id=old_to, text=User#user.email},
-                              #span {text="  to: "},
-                              #textbox {id=new_to, text=""},
-                              #p {},
-                              #checkbox {id=default_email_checkbox, checked=true},
-                              #span {text=" also change default email"},
-                              #br{},
-                              #br{},
-                              #button{id=change_to, text="change", postback=change_to}]}
-                    ]}
-           ],
-    wf:wire(submit, from_localpart, #validate {validators=
-                                               [#is_required {text="Required"},
-                                                #custom{text="Exists", tag=ignored_tag,
-                                                        function=fun is_alias_available/2},
-                                                #custom{text="Invalid", tag=ignored_tag,
-                                                        function=fun is_name_valid/2}
-                                               ]}),
+
+    wf:wire(submit, from_localpart, #validate {validators=[
+        #is_required {text="Required"},
+        #custom{text="Exists", tag=ignored_tag, function=fun is_alias_available/2},
+        #custom{text="Invalid", tag=ignored_tag, function=fun is_name_valid/2}
+    ]}),
     wf:wire(submit, to, #validate {validators=[#is_required {text="Required"}]}),
-%% this breaks everything if uncommented and change_panel show_if=false
-%%     wf:wire(change_to, old_to, #validate {validators=[#is_required {text="Required"}]}),
-%%     wf:wire(change_to, new_to, #validate {validators=[#is_required {text="Required"}]}),
-    wf:render(Body).
+    %% below wires break inplace_textbox displays if change_panel show_if=false
+    wf:wire(change_to, old_to, #validate {validators=[#is_required {text="Required"}]}),
+    wf:wire(change_to, new_to, #validate {validators=[#is_required {text="Required"}]}),
+    [
+        #panel {class=main_panel, body=[
+            #table {id=alias_table, class=alias, rows=[
+                #tablerow {cells=[
+                    #tableheader {text="from"},
+                    #tableheader {text="to"},
+                    #tableheader {text="note"},
+                    #tableheader {text="active"},
+                    #tableheader {}
+                ]},
+                #bind {id=binding, data=Data, map=Map, transform=fun alternate_color/2,
+                    body=#tablerow {id=alias_id, cells=[
+                        #tablecell {id=from_cell},
+                        #tablecell {id=to_cell},
+                        #tablecell {body=#inplace_textbox {id=note_edit, tag=note_tag}},
+                        #tablecell {body=#checkbox {id=active_checkbox}},
+                        #tablecell {body=#button {id=delete_button, text="delete"}}]}}]},
+            #p {},
+            #p {},
+            #br {},
+            #panel {id=create_panel, class=create_panel, body=[
+                #span {text="from: "},
+                #textbox {id=from_localpart, next=submit},
+                #span {text="@"},
+                #span {text=Domain#domain.name},
+                #span {text="  to: "},
+                #textbox {id=to, text=User#user.email},
+                #span {text="  note: "},
+                #textbox {id=note},
+                #br{},
+                #br{},
+                #button{id=submit, text="create alias", postback=create}]},
+            #p {},
+            #panel {id=change_panel, class=create_panel, show_if=true, body=[
+                #span {text="change all 'to' addresses from: "},
+                #textbox {id=old_to, text=User#user.email},
+                #span {text="  to: "},
+                #textbox {id=new_to, text=""},
+                #span {text=" "},
+                #checkbox {id=default_email_checkbox, checked=true},
+                #span {text=" also change default email"},
+                #br{},
+                #br{},
+                #button{id=change_to, text="change all", postback=change_to}]}
+    ]}].
+
 
 alternate_color(DataRow, Acc) when Acc == []; Acc==odd ->
     {DataRow, even, {alias_id@class, "d0"}};
 alternate_color(DataRow, Acc) when Acc == even ->
     {DataRow, odd, {alias_id@class, "d1"}}.
 
-%% inplace_textbox brokenly replaces spaces with ;nbsp
-remove_nbsp_code(Str) ->
-    string:join(string:tokens(Str, "\302\240"), " ").
+%% inplace_textbox brokenly replaces spaces with &nbsp;
+%% remove_nbsp_code(Str) ->
+%%     string:join(string:tokens(Str, "\302\240"), " ").
 
-inplace_textbox_event(IdStr, RawValue) ->
+inplace_textbox_event(IdStr, Value) ->
     {Id, _} = string:to_integer(IdStr),
-    Value = remove_nbsp_code(RawValue),
-    %%io:format("inplace_textbox_event/2: ~p ~p~n", [Id, Value]),
     ok = db:change_alias_note(Id, Value),
     Value.
 
 event(logout) ->
-    wf:user(undefined),
-    wf:role(auth, false),
-    wf:redirect("/web/login");
+    wf:logout(),
+    %% wf:user(undefined),
+    %% wf:role(auth, false),
+    wf:redirect("login");
 
 event(about) ->
-    wf:redirect("/web/index");
+    wf:redirect("index");
 
 event(change_to) ->
     {User, Domain} = wf:user(),
-    [OldTo] = wf:q(old_to),
-    [NewTo] = wf:q(new_to),
-    DidDefaultChange = 
-        case wf:q(default_email_checkbox) of
-            ["on"] -> 
-                case db:change_default_email(NewTo, User#user.id) of
-                    ok ->
-                        %%io:format("default changed~n", []),
-                        wf:user({User#user{email=NewTo}, Domain}),
-                        true;
-                    _ ->
-                        false
-                end;
-            [] -> 
-                false
-        end,
-    %%io:format("change_to: ~p ~p ~p~n", [OldTo, NewTo, ChangeDefault]),
+    OldTo = wf:q(old_to),
+    NewTo = wf:q(new_to),
+    ChangeDefault = case wf:q(default_email_checkbox) of
+        "on" -> true;
+        _ -> false
+    end,
+    ?PRINT({OldTo, NewTo, ChangeDefault}),
+
     ChangedIds = db:change_aliases_to(OldTo, NewTo, Domain#domain.id),
-    %%io:format("changed_ids: ~p~n", [ChangedIds]),
-    DidIdsChange = 
-        case ChangedIds of
-            [] ->
-                false;
-            _ ->
-                true
-        end,
+    ?PRINT([0|ChangedIds]), % force list representation
+    DidIdsChange = case ChangedIds of
+        [] ->
+            false;
+        _ ->
+            true
+    end,
+
+    DidDefaultChange = case ChangeDefault of
+        true -> 
+            case db:change_default_email(NewTo, User#user.id) of
+                ok ->
+                    ?PRINT("default changed"),
+                    wf:user({User#user{email=NewTo}, Domain}),
+                    true;
+                _ ->
+                    false
+            end;
+        false -> 
+            false
+    end,
+
     case DidDefaultChange or DidIdsChange of
         true ->
             wf:redirect("domain");
@@ -188,37 +193,35 @@ event(change_to) ->
 
 event(create) ->
     {_User, Domain} = wf:user(),
-    [Localpart] = wf:q(from_localpart),
+    Localpart = wf:q(from_localpart),
     From = Localpart ++ "@" ++ Domain#domain.name,
-    [To] = wf:q(to),
-    Note = case wf:q(note) of
-               [""] -> " "; %% else cannot edit empty inplace textbox
-               [Any] -> Any
-           end,
+    To = wf:q(to),
+    Note = wf:q(note),
+
     {id, Id} = db:create_alias(From, To, Domain#domain.id, Note),
     IdStr = integer_to_list(Id),
-    wf:insert_bottom(
-      alias_table, 
-      #tablerow {
-        id=IdStr, class="d0", cells=
-        [#tablecell {text=local_part(From)},
-         #tablecell {text=To},
-         #tablecell {body=#inplace_textbox {id=note_edit, text=Note, tag=IdStr}},
-         #tablecell {body=#checkbox {
-                       checked=true, postback={toggle_active, IdStr}}},
-         #tablecell {body=#button {
-                       text="delete", postback={delete, IdStr}}}
-        ]}),
+    wf:insert_bottom(alias_table, 
+        #tablerow {
+            id=IdStr, class="d0", cells= [
+                #tablecell {text=local_part(From)},
+                #tablecell {text=To},
+                #tablecell {body=#inplace_textbox {id=note_edit, text=Note, tag=IdStr}},
+                #tablecell {body=#checkbox {
+                    checked=true, postback={toggle_active, IdStr}}},
+                #tablecell {body=#button {
+                    text="delete", postback={delete, IdStr}}}
+    ]}),
     wf:set(from_localpart, ""),
     wf:set(note, ""),
     ok;
 
 event({delete, IdStr}) ->
     {Id, _} = string:to_integer(IdStr),
+    %?PRINT({delete_alias, IdStr, Id}),
     case db:get_alias_by_id(Id) of
         [_Alias] ->
             {atomic, ok} = db:delete_alias_by_id(Id),
-            wf:update(IdStr, #tablerow {id=""}),
+            wf:remove(IdStr),
             ok;
         [] ->
             wf:wire(#alert {text=wf:f("no alias with id: ~w", [Id])}),

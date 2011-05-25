@@ -1,6 +1,7 @@
--module(web_login).
+%% -*- mode: nitrogen -*-
+-module(login).
 
--include_lib("nitrogen/include/wf.inc").
+-include_lib("nitrogen_core/include/wf.hrl").
 
 -include("schema.hrl").
 
@@ -10,8 +11,7 @@
          body/0,
          event/1]).
 
-main() -> 
-    #template {file=filename:join(nitrogen:get_wwwroot(), "template2.html")}.
+main() -> #template { file="./site/templates/base.html" }.
 
 nav() ->
     #panel {class=nav_panel, 
@@ -23,22 +23,20 @@ title() ->
 	"login".
 
 body() ->
-    Body = 
-        [#panel 
-         {class=mainPanel, body=
-          [#label {text="username"},
-           #textbox {id=username, postback=login, next=password},
-           #p{},
-           #label { text="password" },
-           #password {id=password, postback=login, next=submit},
-           #p{},
-           #button {id=submit, text="Login", postback=login}
-          ]
-         }
-        ],
     wf:wire(submit, username, #validate {validators=[#is_required {text="Required."}]}),
     wf:wire(submit, password, #validate {validators=[#is_required {text="Required."}]}),
-    wf:render(Body).
+    [
+        #panel {class=main_panel, body=[
+            #flash {},
+            #label {text="username"},
+            #textbox {id=username, postback=login, next=password},
+            #p{},
+            #label { text="password" },
+            #password {id=password, postback=login, next=submit},
+            #p{},
+            #button {id=submit, text="Login", postback=login}
+        ]}
+    ].
 	
 authenticate(Username, Password) ->
     case db:is_auth_user(Username, Password) of
@@ -49,10 +47,10 @@ authenticate(Username, Password) ->
     end.
 
 event(register) ->
-    wf:redirect("/web/register");
+    wf:redirect("/register");
 
 event(login) ->
-    case authenticate(hd(wf:q(username)), hd(wf:q(password))) of
+    case authenticate(wf:q(username), wf:q(password)) of
         {auth, User} ->
             db:login_user(User),
             [Domain] = db:get_domains_by_user_id(User#user.id),
@@ -60,7 +58,7 @@ event(login) ->
             wf:role(auth, true),
             wf:redirect_from_login("domain");
         _ ->
-            wf:flash("Incorrect")
+            wf:flash("Incorrect username or password")
     end;
 
 event(_) -> ok.
