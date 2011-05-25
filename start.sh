@@ -6,7 +6,20 @@ then
     echo Starting $1.
     exec erl -pa ebin -s make all -sname $1 \
         -mnesia dir "'Mnesia.dbm'" -s mnesia -s crypto
-elif [ $1 = 'web' ] || [ $1 = 'lookup' ] || [ $1 = 'rest' ]
+elif [ $1 = 'web' ]
+then
+    echo Starting $1.
+    platform=`uname`
+    if [ $platform == 'Darwin' ]
+    then
+        exec ~/proj/sandbox/nitrogen.git/rel/nitrogen/bin/nitrogen console
+    elif [ $platform == 'Linux' ]
+    then
+        exec ~/pkg/nitrogen.git/rel/nitrogen/bin/nitrogen console
+    else
+        echo 'unsupported platform: must be one of "Darwin" or "Linux"'
+    fi
+elif [ $1 = 'lookup' ] || [ $1 = 'rest' ]
 then
     echo Starting $1.
     exec erl -pa ebin -s make all -sname $1 -s $1 \
